@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { ADMIN_ALLOWED_EMAIL, isAllowedAdminEmail } from '../lib/adminAllowedEmail'
 import { supabase } from '../supabaseClient'
 
 export default function AdminLoginPage() {
@@ -13,16 +14,20 @@ export default function AdminLoginPage() {
 
   useEffect(() => {
     let cancelled = false
-    void supabase.auth.getUser().then(({ data: { user } }) => {
+    void supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return
-      if (user) {
+      if (session?.user && isAllowedAdminEmail(session.user.email)) {
         const dest =
           typeof location.state?.from === 'string' &&
           location.state.from.startsWith('/admin') &&
-          location.state.from !== '/admin/login'
+          location.state.from !== '/login'
             ? location.state.from
             : '/admin'
         navigate(dest, { replace: true })
+        return
+      }
+      if (session?.user && !isAllowedAdminEmail(session.user.email)) {
+        navigate('/', { replace: true })
         return
       }
       setBootChecking(false)
@@ -37,7 +42,7 @@ export default function AdminLoginPage() {
     setError(null)
     setLoading(true)
     try {
-      const { error: signError } = await supabase.auth.signInWithPassword({
+      const { data: signData, error: signError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       })
@@ -45,10 +50,16 @@ export default function AdminLoginPage() {
         setError(signError.message ?? 'Sign-in failed')
         return
       }
+      const signedEmail = signData?.user?.email ?? signData?.session?.user?.email
+      if (!isAllowedAdminEmail(signedEmail)) {
+        await supabase.auth.signOut()
+        setError(`Only ${ADMIN_ALLOWED_EMAIL} may access admin.`)
+        return
+      }
       const dest =
         typeof location.state?.from === 'string' &&
         location.state.from.startsWith('/admin') &&
-        location.state.from !== '/admin/login'
+        location.state.from !== '/login'
           ? location.state.from
           : '/admin'
       navigate(dest, { replace: true })
@@ -70,7 +81,9 @@ export default function AdminLoginPage() {
       <div className="mx-auto w-full max-w-sm pb-4">
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">CMS</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight text-white">Admin sign in</h1>
-        <p className="mt-2 text-sm text-zinc-500">Use the account allowed by your Supabase RLS policies.</p>
+        <p className="mt-2 text-sm text-zinc-500">
+          Sign in as <span className="text-zinc-400">{ADMIN_ALLOWED_EMAIL}</span> (admin only).
+        </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-4">
           <label className="block">

@@ -6,7 +6,7 @@
  *
  * BEFORE YOU RUN:
  * 1) Create the admin user: Supabase Dashboard → Authentication → Users → Add user
- *    (same email you use on /admin/login).
+ *    (same email you use on /login for admin).
  * 2) Replace every YOUR_ADMIN_EMAIL@example.com below with that exact email address.
  * 3) Remove dev policies from scripts/supabase-projects-dev-permissions.sql if applied:
  *      DROP POLICY IF EXISTS "Allow all for testing" ON public.projects;

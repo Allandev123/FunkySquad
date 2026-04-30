@@ -51,6 +51,81 @@ function ScrollTopButton() {
   )
 }
 
+const footerNavLinkClass =
+  'text-sm text-zinc-400 transition-colors duration-200 hover:text-[#ff8c00] hover:underline hover:decoration-[#ff8c00]/50 hover:underline-offset-4'
+
+const footerMetaLinkClass =
+  'text-xs text-zinc-500 transition-colors duration-200 hover:text-[#ff8c00] hover:underline hover:decoration-[#ff8c00]/50 hover:underline-offset-4'
+
+function SiteFooter() {
+  return (
+    <footer className="relative border-t border-white/[0.06] bg-gradient-to-b from-[#0d0d0d] via-[#0a0a0a] to-[#050505]">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-500/20 to-transparent"
+        aria-hidden
+      />
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-11 lg:px-10 lg:py-12">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-12 lg:gap-16">
+          <div className="md:pr-4">
+            <p className="navbar-font text-lg font-semibold tracking-wide text-white">FunkySquadHD</p>
+            <p className="mt-2 text-sm font-medium text-zinc-400">Roblox Environment &amp; Game Developer</p>
+            <p className="mt-3 max-w-xs text-sm leading-relaxed text-zinc-500">
+              Worlds, maps, and gameplay spaces — built for clarity, mood, and performance.
+            </p>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Navigate</p>
+            <nav className="mt-4 flex flex-col gap-3" aria-label="Footer">
+              <a href="/#about" className={footerNavLinkClass}>
+                About
+              </a>
+              <a href="/#projects-hub" className={footerNavLinkClass}>
+                Projects
+              </a>
+              <a href="/#portfolio-sections" className={footerNavLinkClass}>
+                Assets
+              </a>
+              <Link to="/contact" className={footerNavLinkClass}>
+                Contact
+              </Link>
+            </nav>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Get in Touch</p>
+            <p className="mt-4 max-w-[260px] text-sm leading-relaxed text-zinc-400">
+              Interested in working together?
+            </p>
+            <Link
+              to="/contact"
+              className="work-btn mt-5 inline-flex text-xs sm:text-sm"
+            >
+              Contact Me
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-10 flex flex-col gap-5 border-t border-white/[0.05] pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+          <p className="text-xs text-zinc-600">© 2026 FunkySquadHD</p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+            <a href="mailto:rbx.funkybussiness@gmail.com" className={footerMetaLinkClass}>
+              Email
+            </a>
+            <span className="hidden text-zinc-700 sm:inline" aria-hidden>
+              ·
+            </span>
+            <span className="text-xs text-zinc-500">
+              Discord{' '}
+              <span className="text-zinc-400">@funkysquadhd</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  )
+}
+
 function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-lg">
@@ -79,7 +154,7 @@ function Navbar() {
 
 function Layout() {
   const { pathname } = useLocation()
-  const isAdminRoute = pathname.startsWith('/admin')
+  const isAdminRoute = pathname.startsWith('/admin') || pathname === '/login'
 
   return (
     <>
@@ -90,7 +165,10 @@ function Layout() {
           <Outlet />
         </div>
       ) : (
-        <Outlet />
+        <>
+          <Outlet />
+          <SiteFooter />
+        </>
       )}
       <ScrollTopButton />
     </>
@@ -255,11 +333,27 @@ function PortfolioPage() {
         >
           <div className="rounded-2xl border border-white/10 bg-[#151515] p-6 sm:p-8 lg:p-10">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">About Me</p>
-            <p className="mt-4 max-w-4xl text-sm leading-relaxed text-zinc-300 sm:text-base">
-              Roblox Environment Designer, 3D Modeler, Game Developer. I create immersive maps and assets for Roblox
-              games, including projects like Knife Legends. Focused on quality, lighting, and gameplay-driven
-              environments.
-            </p>
+            <div className="mt-6 max-w-4xl space-y-5 text-sm leading-relaxed text-zinc-300 sm:text-base">
+              <p>
+                I&apos;m an environment artist focused on Roblox — building worlds players actually want to spend time
+                in. My work sits at the intersection of layout, mood, and readability: maps that feel intentional,
+                spaces that support gameplay, and lighting that sells the scene without fighting it.
+              </p>
+              <p>
+                Most of my projects fall into full environment builds, gameplay-forward spaces, and polish passes on
+                maps and hubs — everything from blockout and set dressing to optimization passes so experiences stay
+                smooth on real hardware.
+              </p>
+              <p>
+                Knife Legends is one of the standout collaborations in my portfolio — a project where strong visual
+                identity and clear spatial design had to work together at scale. I care about systems too: sensible
+                workflows, assets that are easy to iterate on, and visuals that hold up when content changes.
+              </p>
+              <p>
+                If you&apos;re looking for someone who can think like both an artist and a builder — composition and
+                craft, but also performance and player flow — I&apos;d love to hear what you&apos;re shipping next.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -358,10 +452,6 @@ function PortfolioPage() {
           </div>
         </section>
       </main>
-
-      <footer className="border-t border-white/10 px-4 py-8 text-center text-sm text-zinc-400">
-        Feel free to reach out for collaborations or inquiries. <span className="text-zinc-200">FunkySquadHD</span>
-      </footer>
 
       <AnimatePresence>
         {selectedItem && (

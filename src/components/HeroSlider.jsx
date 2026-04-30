@@ -1,11 +1,17 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { categorySectionId } from '../hooks/usePortfolioProjects'
 
-const AUTO_MS = 5200
-const CROSSFADE_S = 0.38
-const ZOOM_DURATION_S = 12
+/** Slide interval + Ken Burns duration (synced, linear zoom over full slide). */
+const AUTO_MS = 5000
+const CROSSFADE_S = 0.26
+const KEN_BURNS_FROM = 1
+const KEN_BURNS_TO = 1.065
+
+const FALLBACK_SLIDE_ID = 'hero-fallback'
+const LOADING_SLIDE_ID = 'hero-loading'
+const FALLBACK_IMAGE_URL = '/hero-fallback.svg'
 
 const LEFT_READ_OVERLAY = 'linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0))'
 
@@ -18,18 +24,46 @@ function truncateText(text, max = 200) {
 export function HeroSlider({ slides = [], loading = false, onViewProject }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
-  /** After mount: allow timed slide changes + crossfade opacity between slides. */
   const [crossfadeEnabled, setCrossfadeEnabled] = useState(false)
-  /** Enables crossfade only after first hero URL has committed (keeps first paint instant). */
   const [heroReady, setHeroReady] = useState(false)
 
-  const len = slides.length
+  const cappedInput = useMemo(() => (slides ?? []).slice(0, 8), [slides])
+
+  const displaySlides = useMemo(() => {
+    if (cappedInput.length > 0) return cappedInput
+    if (loading) {
+      return [
+        {
+          id: LOADING_SLIDE_ID,
+          title: 'FunkySquadHD',
+          description: 'Loading featured work…',
+          image_url: FALLBACK_IMAGE_URL,
+          category: 'Uncategorized',
+        },
+      ]
+    }
+    return [
+      {
+        id: FALLBACK_SLIDE_ID,
+        title: 'FunkySquadHD',
+        description:
+          'Roblox environments, maps, and gameplay spaces — mark projects as Featured in admin to showcase them here.',
+        image_url: FALLBACK_IMAGE_URL,
+        category: 'Uncategorized',
+      },
+    ]
+  }, [cappedInput, loading])
+
+  const len = displaySlides.length
   const safeIndex = len ? Math.min(index, len - 1) : 0
-  const current = len ? slides[safeIndex] : null
+  const current = len ? displaySlides[safeIndex] : null
+  const isPromoSlide =
+    current?.id === FALLBACK_SLIDE_ID ||
+    current?.id === LOADING_SLIDE_ID
 
   useEffect(() => {
     void Promise.resolve().then(() => setIndex(0))
-  }, [slides])
+  }, [displaySlides])
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setCrossfadeEnabled(true))
@@ -37,24 +71,34 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
   }, [])
 
   useEffect(() => {
-    if (!slides.length) {
+    if (!displaySlides.length) {
       void Promise.resolve().then(() => setHeroReady(false))
       return
     }
     if (!current?.image_url) return
     void Promise.resolve().then(() => setHeroReady(true))
-  }, [slides.length, current?.image_url])
+  }, [displaySlides.length, current?.image_url])
 
   useEffect(() => {
-    if (!slides?.length) return
-    for (const slide of slides) {
+    if (!displaySlides.length) return
+    for (const slide of displaySlides) {
       const url = slide.image_url
       if (!url) continue
       const img = new Image()
       img.decoding = 'async'
       img.src = url
     }
-  }, [slides])
+  }, [displaySlides])
+
+  useEffect(() => {
+    if (!len) return
+    const nextIdx = (safeIndex + 1) % len
+    const nextUrl = displaySlides[nextIdx]?.image_url
+    if (!nextUrl) return
+    const img = new Image()
+    img.decoding = 'async'
+    img.src = nextUrl
+  }, [displaySlides, len, safeIndex])
 
   useEffect(() => {
     if (paused || len <= 1) return
@@ -78,6 +122,13 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
     ease: [0.22, 1, 0.36, 1],
   }
 
+  const kenBurnsTransition = {
+    duration: AUTO_MS / 1000,
+    ease: 'linear',
+  }
+
+  const enableKenBurns = Boolean(current && !isPromoSlide)
+
   return (
     <section
       className="relative isolate min-h-[420px] overflow-hidden md:min-h-[72vh]"
@@ -87,7 +138,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
       aria-label="Featured projects"
     >
       <div className="relative h-[65vh] min-h-[420px] w-full md:h-[72vh]">
-        <div className="absolute inset-0 bg-zinc-950" aria-hidden />
+        <div className="absolute inset-0 bg-[#0c0a09]" aria-hidden />
 
         <AnimatePresence mode="sync" initial={false}>
           {current?.image_url ? (
@@ -100,10 +151,11 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               transition={crossfadeTransition}
             >
               <motion.div
-                className="h-full w-full will-change-transform"
-                initial={{ scale: 1 }}
-                animate={{ scale: 1.03 }}
-                transition={{ duration: ZOOM_DURATION_S, ease: 'linear' }}
+                key={`ken-${current.id}`}
+                className="flex h-full w-full items-center justify-center overflow-hidden will-change-transform"
+                initial={{ scale: KEN_BURNS_FROM }}
+                animate={{ scale: enableKenBurns ? KEN_BURNS_TO : KEN_BURNS_FROM }}
+                transition={enableKenBurns ? kenBurnsTransition : { duration: 0 }}
               >
                 <img
                   src={current.image_url}
@@ -111,16 +163,13 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
                   decoding="async"
                   loading="eager"
                   fetchPriority="high"
-                  className="h-full w-full object-cover"
+                  className="h-full min-h-full w-full min-w-full object-cover object-center"
+                  draggable={false}
                 />
               </motion.div>
             </motion.div>
           ) : (
-            <div
-              key="hero-placeholder"
-              className="absolute inset-0 bg-zinc-950"
-              aria-hidden
-            />
+            <div key="hero-placeholder" className="absolute inset-0 bg-[#0c0a09]" aria-hidden />
           )}
         </AnimatePresence>
 
@@ -140,13 +189,19 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 8 }}
                   transition={{
-                    duration: allowSlideCrossfade ? 0.28 : 0,
+                    duration: allowSlideCrossfade ? 0.24 : 0,
                     ease: [0.22, 1, 0.36, 1],
                   }}
                 >
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-orange-400 sm:text-xs">
-                    Featured
-                  </p>
+                  {!isPromoSlide ? (
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-orange-400 sm:text-xs">
+                      Featured
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500 sm:text-xs">
+                      {current.id === LOADING_SLIDE_ID ? 'Loading' : 'Portfolio'}
+                    </p>
+                  )}
                   <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
                     {current.title}
                   </h1>
@@ -155,9 +210,10 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
                   </p>
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <a
-                      href={categoryHref}
+                      href={isPromoSlide ? '#projects-hub' : categoryHref}
                       className="inline-flex rounded-full border border-white/25 bg-black/35 px-5 py-2.5 text-xs font-semibold text-white backdrop-blur-sm transition hover:border-[#ff8c00]/60 hover:bg-black/45 sm:px-6 sm:py-3 sm:text-sm"
                       onClick={(e) => {
+                        if (isPromoSlide) return
                         if (onViewProject) {
                           e.preventDefault()
                           onViewProject(current.id)
@@ -171,33 +227,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
                     </Link>
                   </div>
                 </motion.div>
-              ) : (
-                <motion.div
-                  key="fallback-brand"
-                  initial={false}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0 }}
-                >
-                  <h1 className="text-3xl font-bold text-white sm:text-5xl lg:text-6xl">FunkySquadHD</h1>
-                  <p className="mt-2 text-base text-zinc-200 sm:text-xl">Roblox Environment &amp; Game Developer</p>
-                  <p className="mt-3 max-w-xl text-sm text-zinc-400 sm:text-base">
-                    {loading
-                      ? 'Loading featured work…'
-                      : 'Mark projects as Featured in the admin panel to showcase them here.'}
-                  </p>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <a
-                      href="#projects-hub"
-                      className="inline-flex rounded-full border border-white/25 bg-black/35 px-5 py-2.5 text-xs font-semibold text-white sm:px-6 sm:py-3 sm:text-sm"
-                    >
-                      View Projects
-                    </a>
-                    <Link to="/contact" className="work-btn inline-flex text-xs sm:text-sm">
-                      Work With Me
-                    </Link>
-                  </div>
-                </motion.div>
-              )}
+              ) : null}
             </AnimatePresence>
           </div>
         </div>
@@ -208,29 +238,34 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               type="button"
               aria-label="Previous slide"
               onClick={() => go(-1)}
-              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2.5 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:left-4 sm:p-3"
+              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:left-4 sm:p-2.5"
             >
-              <span className="text-lg leading-none sm:text-xl">&#8249;</span>
+              <span className="block text-lg font-light leading-none sm:text-xl">‹</span>
             </button>
             <button
               type="button"
               aria-label="Next slide"
               onClick={() => go(1)}
-              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2.5 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:right-4 sm:p-3"
+              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:right-4 sm:p-2.5"
             >
-              <span className="text-lg leading-none sm:text-xl">&#8250;</span>
+              <span className="block text-lg font-light leading-none sm:text-xl">›</span>
             </button>
 
-            <div className="absolute bottom-16 left-1/2 z-20 flex -translate-x-1/2 gap-2 sm:bottom-20">
-              {slides.map((s, i) => (
+            <div
+              className="absolute bottom-[4.25rem] left-1/2 z-20 flex -translate-x-1/2 gap-2 sm:bottom-[4.5rem]"
+              role="tablist"
+              aria-label="Slide indicators"
+            >
+              {displaySlides.map((s, i) => (
                 <button
                   key={s.id}
                   type="button"
+                  role="tab"
                   aria-label={`Go to slide ${i + 1}`}
-                  aria-current={i === safeIndex}
+                  aria-selected={i === safeIndex}
                   onClick={() => setIndex(i)}
-                  className={`h-2 rounded-full transition-all sm:h-2.5 ${
-                    i === safeIndex ? 'w-7 bg-[#ff8c00]' : 'w-2 bg-white/35 hover:bg-white/55 sm:w-2.5'
+                  className={`h-1.5 rounded-full transition-all sm:h-2 ${
+                    i === safeIndex ? 'w-6 bg-[#ff8c00] sm:w-7' : 'w-1.5 bg-white/35 hover:bg-white/55 sm:w-2'
                   }`}
                 />
               ))}
@@ -239,7 +274,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
         ) : null}
 
         <motion.div
-          className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-center text-[10px] uppercase tracking-[0.2em] text-zinc-400 sm:text-xs"
+          className="absolute bottom-5 left-1/2 z-10 -translate-x-1/2 text-center text-[10px] uppercase tracking-[0.2em] text-zinc-400 sm:bottom-6 sm:text-xs"
           animate={{ y: [0, 5, 0], opacity: [0.65, 1, 0.65] }}
           transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
         >

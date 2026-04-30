@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { isAllowedAdminEmail } from '../lib/adminAllowedEmail'
 import { supabase } from '../supabaseClient'
 
 /**
- * Blocks /admin until Supabase reports a signed-in user (JWT validated via getUser).
- * Redirects anonymous visitors to /admin/login (covers direct URL entry).
+ * Blocks /admin until Supabase session exists and email matches ADMIN_ALLOWED_EMAIL.
+ * No admin UI is rendered until allowed (avoids flash). Wrong email → home; anon → /login.
  */
 export default function RequireAdmin({ children }) {
   const navigate = useNavigate()
@@ -16,16 +17,24 @@ export default function RequireAdmin({ children }) {
 
     async function verify() {
       const {
-        data: { user },
+        data: { session },
         error,
-      } = await supabase.auth.getUser()
+      } = await supabase.auth.getSession()
       if (cancelled) return
-      if (error || !user) {
-        navigate('/admin/login', { replace: true, state: { from: location.pathname } })
-        setStatus('anon')
+
+      if (error || !session?.user) {
+        setStatus('blocked')
+        navigate('/login', { replace: true, state: { from: location.pathname } })
         return
       }
-      setStatus('authed')
+
+      if (!isAllowedAdminEmail(session.user.email)) {
+        setStatus('blocked')
+        navigate('/', { replace: true })
+        return
+      }
+
+      setStatus('allowed')
     }
 
     void verify()
@@ -34,12 +43,20 @@ export default function RequireAdmin({ children }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return
+
       if (!session?.user) {
-        setStatus('anon')
-        navigate('/admin/login', { replace: true })
+        setStatus('blocked')
+        navigate('/login', { replace: true })
         return
       }
-      setStatus('authed')
+
+      if (!isAllowedAdminEmail(session.user.email)) {
+        setStatus('blocked')
+        navigate('/', { replace: true })
+        return
+      }
+
+      setStatus('allowed')
     })
 
     return () => {
@@ -48,10 +65,10 @@ export default function RequireAdmin({ children }) {
     }
   }, [navigate, location.pathname])
 
-  if (status !== 'authed') {
+  if (status !== 'allowed') {
     return (
       <div className="flex min-h-[min(70vh,32rem)] items-center justify-center text-sm text-zinc-500">
-        Verifying session…
+        Checking session…
       </div>
     )
   }

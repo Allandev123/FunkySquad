@@ -131,17 +131,18 @@ export function usePortfolioProjects() {
 
   const featuredWork = useMemo(() => galleryItems.slice(0, 6), [galleryItems])
 
-  const featuredHeroProjects = useMemo(
-    () =>
-      featuredRows.map((row) => ({
+  const featuredHeroProjects = useMemo(() => {
+    return [...featuredRows]
+      .sort((a, b) => Number(a.order_index ?? 0) - Number(b.order_index ?? 0))
+      .slice(0, FEATURED_HERO_LIMIT)
+      .map((row) => ({
         id: row.id,
         title: row.title ?? '',
         description: row.description ?? '',
         image_url: row.image_url ?? '',
         category: row.category?.trim() ? row.category : 'Uncategorized',
-      })),
-    [featuredRows],
-  )
+      }))
+  }, [featuredRows])
 
   return {
     loading,
