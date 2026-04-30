@@ -1,9 +1,13 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { categorySectionId } from '../hooks/usePortfolioProjects'
 
 const AUTO_MS = 5200
+const CROSSFADE_S = 0.38
+const ZOOM_DURATION_S = 12
+
+const LEFT_READ_OVERLAY = 'linear-gradient(to right, rgba(0,0,0,0.6), rgba(0,0,0,0))'
 
 function truncateText(text, max = 200) {
   const t = (text ?? '').trim()
@@ -14,6 +18,10 @@ function truncateText(text, max = 200) {
 export function HeroSlider({ slides = [], loading = false, onViewProject }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
+  /** After mount: allow timed slide changes + crossfade opacity between slides. */
+  const [crossfadeEnabled, setCrossfadeEnabled] = useState(false)
+  /** Enables crossfade only after first hero URL has committed (keeps first paint instant). */
+  const [heroReady, setHeroReady] = useState(false)
 
   const len = slides.length
   const safeIndex = len ? Math.min(index, len - 1) : 0
@@ -24,6 +32,31 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
   }, [slides])
 
   useEffect(() => {
+    const id = requestAnimationFrame(() => setCrossfadeEnabled(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+
+  useEffect(() => {
+    if (!slides.length) {
+      void Promise.resolve().then(() => setHeroReady(false))
+      return
+    }
+    if (!current?.image_url) return
+    void Promise.resolve().then(() => setHeroReady(true))
+  }, [slides.length, current?.image_url])
+
+  useEffect(() => {
+    if (!slides?.length) return
+    for (const slide of slides) {
+      const url = slide.image_url
+      if (!url) continue
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = url
+    }
+  }, [slides])
+
+  useEffect(() => {
     if (paused || len <= 1) return
     const timer = window.setInterval(() => {
       setIndex((i) => (i + 1) % len)
@@ -31,29 +64,19 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
     return () => window.clearInterval(timer)
   }, [paused, len])
 
-  const nextPreloadSrc = useMemo(() => {
-    if (!len) return ''
-    return slides[(safeIndex + 1) % len]?.image_url ?? ''
-  }, [slides, len, safeIndex])
-
-  useEffect(() => {
-    if (!nextPreloadSrc) return
-    const link = document.createElement('link')
-    link.rel = 'preload'
-    link.as = 'image'
-    link.href = nextPreloadSrc
-    document.head.appendChild(link)
-    return () => {
-      if (link.parentNode) document.head.removeChild(link)
-    }
-  }, [nextPreloadSrc])
-
   const go = (delta) => {
     if (!len) return
     setIndex((i) => (i + delta + len) % len)
   }
 
   const categoryHref = current ? `#${categorySectionId(current.category)}` : '#projects-hub'
+
+  const allowSlideCrossfade = heroReady && crossfadeEnabled
+
+  const crossfadeTransition = {
+    duration: allowSlideCrossfade ? CROSSFADE_S : 0,
+    ease: [0.22, 1, 0.36, 1],
+  }
 
   return (
     <section
@@ -66,21 +89,21 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
       <div className="relative h-[65vh] min-h-[420px] w-full md:h-[72vh]">
         <div className="absolute inset-0 bg-zinc-950" aria-hidden />
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="sync" initial={false}>
           {current?.image_url ? (
             <motion.div
               key={current.id}
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
+              className="absolute inset-0 will-change-[opacity]"
+              initial={allowSlideCrossfade ? { opacity: 0 } : false}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              transition={crossfadeTransition}
             >
               <motion.div
-                className="h-full w-full"
-                initial={{ scale: 1.12 }}
+                className="h-full w-full will-change-transform"
+                initial={{ scale: 1 }}
                 animate={{ scale: 1.03 }}
-                transition={{ duration: 9, ease: 'easeOut' }}
+                transition={{ duration: ZOOM_DURATION_S, ease: 'linear' }}
               >
                 <img
                   src={current.image_url}
@@ -93,38 +116,33 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               </motion.div>
             </motion.div>
           ) : (
-            <motion.div
+            <div
               key="hero-placeholder"
-              className={`absolute inset-0 bg-zinc-950 ${loading ? 'animate-pulse' : ''}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-zinc-950"
               aria-hidden
             />
           )}
         </AnimatePresence>
 
-        {nextPreloadSrc ? (
-          <img src={nextPreloadSrc} alt="" className="pointer-events-none absolute h-px w-px opacity-0" loading="lazy" />
-        ) : null}
-
         <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black via-black/80 to-black/25 sm:via-black/65"
+          className="pointer-events-none absolute inset-0 z-[2]"
+          style={{ background: LEFT_READ_OVERLAY }}
           aria-hidden
         />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/50" aria-hidden />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-transparent" aria-hidden />
 
-        <div className="absolute inset-0 mx-auto flex max-w-7xl items-center px-4 sm:px-6 lg:px-10">
+        <div className="absolute inset-0 z-[3] mx-auto flex max-w-7xl items-center px-4 sm:px-6 lg:px-10">
           <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl">
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" initial={false}>
               {current ? (
                 <motion.div
                   key={current.id}
-                  initial={{ opacity: 0, x: -16 }}
+                  initial={allowSlideCrossfade ? { opacity: 0, x: -10 } : false}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 12 }}
-                  transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+                  exit={{ opacity: 0, x: 8 }}
+                  transition={{
+                    duration: allowSlideCrossfade ? 0.28 : 0,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
                 >
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-orange-400 sm:text-xs">
                     Featured
@@ -132,13 +150,13 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
                   <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
                     {current.title}
                   </h1>
-                  <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-zinc-300 sm:text-base lg:text-lg">
+                  <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-zinc-200 sm:text-base lg:text-lg">
                     {truncateText(current.description, 280)}
                   </p>
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <a
                       href={categoryHref}
-                      className="inline-flex rounded-full border border-white/25 bg-black/40 px-5 py-2.5 text-xs font-semibold text-white backdrop-blur-sm transition hover:border-[#ff8c00]/60 hover:bg-black/55 sm:px-6 sm:py-3 sm:text-sm"
+                      className="inline-flex rounded-full border border-white/25 bg-black/35 px-5 py-2.5 text-xs font-semibold text-white backdrop-blur-sm transition hover:border-[#ff8c00]/60 hover:bg-black/45 sm:px-6 sm:py-3 sm:text-sm"
                       onClick={(e) => {
                         if (onViewProject) {
                           e.preventDefault()
@@ -156,9 +174,9 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               ) : (
                 <motion.div
                   key="fallback-brand"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={false}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
+                  transition={{ duration: 0 }}
                 >
                   <h1 className="text-3xl font-bold text-white sm:text-5xl lg:text-6xl">FunkySquadHD</h1>
                   <p className="mt-2 text-base text-zinc-200 sm:text-xl">Roblox Environment &amp; Game Developer</p>
@@ -190,7 +208,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               type="button"
               aria-label="Previous slide"
               onClick={() => go(-1)}
-              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/45 p-2.5 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/60 sm:left-4 sm:p-3"
+              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2.5 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:left-4 sm:p-3"
             >
               <span className="text-lg leading-none sm:text-xl">&#8249;</span>
             </button>
@@ -198,7 +216,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               type="button"
               aria-label="Next slide"
               onClick={() => go(1)}
-              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/45 p-2.5 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/60 sm:right-4 sm:p-3"
+              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2.5 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:right-4 sm:p-3"
             >
               <span className="text-lg leading-none sm:text-xl">&#8250;</span>
             </button>
@@ -228,7 +246,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
           <span>Scroll</span>
           <div className="mx-auto mt-2 h-6 w-px bg-zinc-500/90" />
         </motion.div>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-24 bg-gradient-to-b from-transparent to-black" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-16 bg-gradient-to-b from-transparent to-black/40" />
       </div>
     </section>
   )
