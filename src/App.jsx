@@ -78,11 +78,20 @@ function Navbar() {
 }
 
 function Layout() {
+  const { pathname } = useLocation()
+  const isAdminRoute = pathname.startsWith('/admin')
+
   return (
     <>
       <ScrollToTop />
       <Navbar />
-      <Outlet />
+      {isAdminRoute ? (
+        <div className="bg-[#0b0b0b] pt-6 pb-12 sm:pt-8">
+          <Outlet />
+        </div>
+      ) : (
+        <Outlet />
+      )}
       <ScrollTopButton />
     </>
   )
@@ -240,7 +249,10 @@ function PortfolioPage() {
           </div>
         </section>
 
-        <section id="about" className="mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-10">
+        <section
+          id="about"
+          className="scroll-mt-[100px] mx-auto max-w-7xl px-4 pb-14 sm:px-6 lg:px-10"
+        >
           <div className="rounded-2xl border border-white/10 bg-[#151515] p-6 sm:p-8 lg:p-10">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">About Me</p>
             <p className="mt-4 max-w-4xl text-sm leading-relaxed text-zinc-300 sm:text-base">
@@ -251,7 +263,10 @@ function PortfolioPage() {
           </div>
         </section>
 
-        <section id="projects-hub" className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10">
+        <section
+          id="projects-hub"
+          className="scroll-mt-[100px] mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10"
+        >
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Project Categories</p>
           <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Explore By Project</h2>
           <div className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -293,14 +308,18 @@ function PortfolioPage() {
 
         <section
           id="portfolio-sections"
-          className="mx-auto max-w-7xl space-y-14 px-4 py-14 sm:px-6 lg:px-10"
+          className="scroll-mt-[100px] mx-auto max-w-7xl space-y-14 px-4 py-14 sm:px-6 lg:px-10"
         >
           {categorySections.map((section) => {
             const isExpanded = expandedSections[section.key]
             const visibleItems = isExpanded ? section.items : section.items.slice(0, 4)
 
             return (
-              <div key={section.key} id={section.key} className="border-t border-white/10 pt-10 scroll-mt-28">
+              <div
+                key={section.key}
+                id={section.key}
+                className="scroll-mt-[100px] border-t border-white/10 pt-10"
+              >
                 <div className="mb-5 flex items-center justify-between gap-4">
                   <h2 className="text-2xl font-semibold text-white sm:text-3xl">{section.title}</h2>
                   {section.items.length > 4 && (
@@ -520,4 +539,4 @@ function ContactPage() {
   )
 }
 
-export { Layout, PortfolioPage, ContactPage }
+export { Layout, Navbar, PortfolioPage, ContactPage }

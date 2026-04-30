@@ -1,9 +1,25 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  formatMbFraction,
+  getProjectImagesBucket,
+  MAX_PROJECT_IMAGE_BYTES,
+  uploadProjectImageToStorage,
+  validateProjectImageFile,
+} from './lib/adminImageUpload'
 import { fetchAdminProjectsResilient } from './lib/projectsFetch'
 import { supabase } from './supabaseClient'
 
 const PAGE_SIZE = 15
+
+const INITIAL_IMAGE_UPLOAD_STATE = {
+  uploading: false,
+  error: null,
+  success: null,
+  selectedLabel: null,
+  warnLarge: false,
+}
 
 const EMPTY_FORM = {
   title: '',
@@ -12,6 +28,75 @@ const EMPTY_FORM = {
   category: '',
   order_index: 1,
   is_featured: false,
+}
+
+/** @typedef {'title' | 'category' | 'hero' | 'order'} AdminSortKey */
+
+/**
+ * @param {unknown} a
+ * @param {unknown} b
+ * @param {AdminSortKey} key
+ * @param {'asc' | 'desc'} dir
+ */
+function compareProjectsForSort(a, b, key, dir) {
+  const mult = dir === 'asc' ? 1 : -1
+  let cmp
+  switch (key) {
+    case 'title':
+      cmp = (a.title ?? '').localeCompare(b.title ?? '', undefined, { sensitivity: 'base' })
+      break
+    case 'category':
+      cmp = (a.category ?? '').localeCompare(b.category ?? '', undefined, { sensitivity: 'base' })
+      break
+    case 'hero': {
+      const bv = Number(Boolean(b.is_featured))
+      const av = Number(Boolean(a.is_featured))
+      cmp = bv - av
+      break
+    }
+    case 'order': {
+      const ao = Number(a.order_index ?? 0)
+      const bo = Number(b.order_index ?? 0)
+      cmp = (Number.isFinite(ao) ? ao : 0) - (Number.isFinite(bo) ? bo : 0)
+      break
+    }
+    default:
+      cmp = 0
+  }
+  if (cmp !== 0) return cmp * mult
+  return String(a.id ?? '').localeCompare(String(b.id ?? ''))
+}
+
+function SortableTh({ label, columnKey, activeKey, sortDir, onSort, align = 'left', tabular = false }) {
+  const active = activeKey === columnKey
+  const ariaSort = active ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'
+  const justify = align === 'center' ? 'justify-center' : 'justify-start'
+
+  return (
+    <th scope="col" className="px-4 py-2 font-medium" aria-sort={ariaSort}>
+      <button
+        type="button"
+        onClick={() => onSort(columnKey)}
+        className={`-mx-1 flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1.5 transition-colors hover:bg-white/[0.04] hover:text-zinc-300 ${justify} ${align === 'center' ? 'text-center' : 'text-left'} ${tabular ? 'tabular-nums' : ''} ${
+          active ? 'text-[#ff8c00]' : 'text-zinc-500'
+        }`}
+      >
+        <span className="uppercase tracking-wide">{label}</span>
+        {active ? (
+          <span className="text-base leading-none text-[#ff8c00]" aria-hidden>
+            {sortDir === 'asc' ? '↑' : '↓'}
+          </span>
+        ) : null}
+        <span className="sr-only">
+          {active
+            ? sortDir === 'asc'
+              ? ', sorted ascending'
+              : ', sorted descending'
+            : ', activate to sort ascending'}
+        </span>
+      </button>
+    </th>
+  )
 }
 
 function ThumbnailCell({ src, alt }) {
@@ -36,10 +121,14 @@ function ThumbnailCell({ src, alt }) {
 }
 
 export default function AdminPage() {
+  const navigate = useNavigate()
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
+  const [sessionEmail, setSessionEmail] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
+  const [sortKey, setSortKey] = useState(/** @type {AdminSortKey} */ ('order'))
+  const [sortDir, setSortDir] = useState(/** @type {'asc' | 'desc'} */ ('asc'))
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('create')
@@ -48,6 +137,19 @@ export default function AdminPage() {
 
   const [savingModal, setSavingModal] = useState(false)
   const [deletingById, setDeletingById] = useState({})
+  const [imageUpload, setImageUpload] = useState(INITIAL_IMAGE_UPLOAD_STATE)
+  const imageFileInputRef = useRef(null)
+
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data: { user } }) => {
+      setSessionEmail(user?.email ?? null)
+    })
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    navigate('/admin/login', { replace: true })
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -91,18 +193,38 @@ export default function AdminPage() {
     })
   }, [projects, searchQuery])
 
-  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / PAGE_SIZE))
+  const sortedFilteredProjects = useMemo(() => {
+    return [...filteredProjects].sort((a, b) => compareProjectsForSort(a, b, sortKey, sortDir))
+  }, [filteredProjects, sortKey, sortDir])
+
+  const totalPages = Math.max(1, Math.ceil(sortedFilteredProjects.length / PAGE_SIZE))
   const effectivePage = Math.min(Math.max(1, page), totalPages)
 
   const paginatedProjects = useMemo(() => {
     const start = (effectivePage - 1) * PAGE_SIZE
-    return filteredProjects.slice(start, start + PAGE_SIZE)
-  }, [filteredProjects, effectivePage])
+    return sortedFilteredProjects.slice(start, start + PAGE_SIZE)
+  }, [sortedFilteredProjects, effectivePage])
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+      setPage(1)
+    }
+  }
+
+  const resetImageUploadUi = () => {
+    setImageUpload(INITIAL_IMAGE_UPLOAD_STATE)
+    if (imageFileInputRef.current) imageFileInputRef.current.value = ''
+  }
 
   const openCreateModal = () => {
     setModalMode('create')
     setEditingId(null)
     setForm({ ...EMPTY_FORM })
+    resetImageUploadUi()
     setModalOpen(true)
   }
 
@@ -117,6 +239,7 @@ export default function AdminPage() {
       order_index: project.order_index ?? 1,
       is_featured: Boolean(project.is_featured),
     })
+    resetImageUploadUi()
     setModalOpen(true)
   }
 
@@ -125,6 +248,7 @@ export default function AdminPage() {
     setSavingModal(false)
     setEditingId(null)
     setForm({ ...EMPTY_FORM })
+    resetImageUploadUi()
   }
 
   useEffect(() => {
@@ -135,6 +259,65 @@ export default function AdminPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [modalOpen])
+
+  useEffect(() => {
+    if (!imageUpload.success) return
+    const timer = window.setTimeout(() => {
+      setImageUpload((s) => (s.success ? { ...s, success: null } : s))
+    }, 3500)
+    return () => window.clearTimeout(timer)
+  }, [imageUpload.success])
+
+  const handleImageFileChange = async (event) => {
+    const input = event.target
+    const file = input.files?.[0]
+    input.value = ''
+    if (!file) return
+
+    const validation = validateProjectImageFile(file)
+    if (!validation.ok) {
+      setImageUpload({
+        ...INITIAL_IMAGE_UPLOAD_STATE,
+        error: validation.error,
+      })
+      console.error('[admin] Image validation failed:', validation.error)
+      return
+    }
+
+    const selectedLabel = `${formatMbFraction(file.size)} MB / ${formatMbFraction(MAX_PROJECT_IMAGE_BYTES)} MB`
+    setImageUpload({
+      uploading: true,
+      error: null,
+      success: null,
+      selectedLabel,
+      warnLarge: validation.warnLarge,
+    })
+
+    const bucket = getProjectImagesBucket()
+    const { url, error } = await uploadProjectImageToStorage(file, bucket)
+
+    if (error || !url) {
+      setImageUpload({
+        uploading: false,
+        error: error ?? 'Upload failed',
+        success: null,
+        selectedLabel,
+        warnLarge: validation.warnLarge,
+      })
+      console.error('[admin] Image upload failed:', error)
+      return
+    }
+
+    updateForm('image_url', url)
+    setImageUpload({
+      uploading: false,
+      error: null,
+      success: 'Image uploaded.',
+      selectedLabel,
+      warnLarge: validation.warnLarge,
+    })
+    console.log('[admin] Image uploaded:', url)
+  }
 
   const handleModalSave = async () => {
     const payload = {
@@ -238,6 +421,11 @@ export default function AdminPage() {
             <p className="mt-1.5 text-sm text-zinc-500">
               Manage <span className="text-zinc-400">projects</span> in Supabase — compact list, edit in modal.
             </p>
+            {sessionEmail ? (
+              <p className="mt-2 text-xs text-zinc-600" title="Signed-in account">
+                Signed in as {sessionEmail}
+              </p>
+            ) : null}
           </div>
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
             <input
@@ -258,6 +446,13 @@ export default function AdminPage() {
             >
               Add Project
             </button>
+            <button
+              type="button"
+              onClick={() => void handleSignOut()}
+              className="shrink-0 rounded-lg border border-white/[0.12] px-4 py-2 text-sm font-medium text-zinc-400 transition hover:border-white/20 hover:bg-white/[0.05] hover:text-zinc-200"
+            >
+              Sign out
+            </button>
           </div>
         </header>
 
@@ -274,10 +469,39 @@ export default function AdminPage() {
                 <thead>
                   <tr className="border-b border-white/[0.06] text-[11px] font-medium uppercase tracking-wide text-zinc-500">
                     <th className="px-4 py-3 pl-5 font-medium">Preview</th>
-                    <th className="px-4 py-3 font-medium">Title</th>
-                    <th className="px-4 py-3 font-medium">Category</th>
-                    <th className="px-4 py-3 font-medium text-center">Hero</th>
-                    <th className="px-4 py-3 font-medium tabular-nums">Order</th>
+                    <SortableTh
+                      label="Title"
+                      columnKey="title"
+                      activeKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                      align="left"
+                    />
+                    <SortableTh
+                      label="Category"
+                      columnKey="category"
+                      activeKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                      align="left"
+                    />
+                    <SortableTh
+                      label="Hero"
+                      columnKey="hero"
+                      activeKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                      align="center"
+                    />
+                    <SortableTh
+                      label="Order"
+                      columnKey="order"
+                      activeKey={sortKey}
+                      sortDir={sortDir}
+                      onSort={toggleSort}
+                      align="left"
+                      tabular
+                    />
                     <th className="px-4 py-3 pr-5 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
@@ -341,7 +565,7 @@ export default function AdminPage() {
           <footer className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-500">
             <span>
               Showing {(effectivePage - 1) * PAGE_SIZE + 1}–
-              {Math.min(effectivePage * PAGE_SIZE, filteredProjects.length)} of {filteredProjects.length}
+              {Math.min(effectivePage * PAGE_SIZE, sortedFilteredProjects.length)} of {sortedFilteredProjects.length}
               {searchQuery.trim() ? ` (filtered from ${projects.length})` : ''}
             </span>
             <div className="flex items-center gap-2">
@@ -435,16 +659,70 @@ export default function AdminPage() {
                     Featured — show in homepage hero slideshow (max ~8, ordered by index)
                   </span>
                 </label>
-                <label className="block">
-                  <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Image path</span>
+                <div className="block">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+                    Image path / URL
+                  </span>
                   <input
                     type="text"
                     value={form.image_url}
                     onChange={(e) => updateForm('image_url', e.target.value)}
-                    placeholder="/images/example.png"
-                    className="mt-1.5 w-full rounded-lg border border-white/[0.08] bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500/35"
+                    placeholder="/images/example.png or Supabase public URL"
+                    disabled={imageUpload.uploading}
+                    className="mt-1.5 w-full rounded-lg border border-white/[0.08] bg-zinc-950/60 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-orange-500/35 disabled:opacity-50"
                   />
-                </label>
+                  <input
+                    ref={imageFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                    className="sr-only"
+                    aria-hidden
+                    tabIndex={-1}
+                    onChange={handleImageFileChange}
+                  />
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => imageFileInputRef.current?.click()}
+                      disabled={imageUpload.uploading}
+                      className="rounded-lg border border-white/[0.12] bg-zinc-900/80 px-4 py-2 text-xs font-semibold text-zinc-100 transition hover:border-[#ff8c00]/50 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {imageUpload.uploading
+                        ? 'Uploading…'
+                        : form.image_url.trim()
+                          ? 'Replace Image'
+                          : 'Upload Image'}
+                    </button>
+                    {imageUpload.selectedLabel ? (
+                      <span className="text-xs tabular-nums text-zinc-500">{imageUpload.selectedLabel}</span>
+                    ) : null}
+                  </div>
+                  {imageUpload.warnLarge ? (
+                    <p className="mt-2 text-xs text-amber-400/90">
+                      Large image (&gt;3MB) — upload may take longer.
+                    </p>
+                  ) : null}
+                  {imageUpload.error ? (
+                    <p className="mt-2 text-xs text-red-400">{imageUpload.error}</p>
+                  ) : null}
+                  {imageUpload.success ? (
+                    <p className="mt-2 text-xs text-emerald-400">{imageUpload.success}</p>
+                  ) : null}
+                  <p className="mt-1.5 text-[11px] text-zinc-600">
+                    JPG, PNG, WebP · max 5MB · stored in Supabase bucket{' '}
+                    <code className="rounded bg-zinc-800 px-1">{getProjectImagesBucket()}</code>
+                  </p>
+                  {form.image_url.trim() ? (
+                    <div className="mt-3 flex items-start gap-3">
+                      <img
+                        src={form.image_url}
+                        alt=""
+                        className="h-20 w-20 shrink-0 rounded-md border border-white/[0.08] bg-zinc-900 object-cover"
+                      />
+                      <span className="text-[11px] leading-snug text-zinc-500">Preview uses the path above.</span>
+                    </div>
+                  ) : null}
+                </div>
                 <label className="block">
                   <span className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">Description</span>
                   <textarea
@@ -476,7 +754,7 @@ export default function AdminPage() {
                 <button
                   type="button"
                   onClick={handleModalSave}
-                  disabled={savingModal}
+                  disabled={savingModal || imageUpload.uploading}
                   className="rounded-lg bg-[#ff8c00] px-4 py-2 text-sm font-semibold text-black transition hover:bg-orange-400 disabled:opacity-50"
                 >
                   {savingModal ? 'Saving…' : 'Save'}

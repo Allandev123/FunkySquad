@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { sortSectionsByProjectCategoryOrder } from '../lib/projectCategoryOrder'
 import { fetchAllProjectsResilient, fetchFeaturedHeroResilient } from '../lib/projectsFetch'
 import { supabase } from '../supabaseClient'
 
@@ -37,18 +38,15 @@ function buildCategorySections(items) {
   const sections = []
   for (const [title, catItems] of byCat.entries()) {
     const sortedItems = [...catItems].sort((a, b) => a.order_index - b.order_index)
-    const minOrder = sortedItems.length ? Math.min(...sortedItems.map((i) => i.order_index)) : 0
     sections.push({
       key: categorySectionId(title),
       title,
       description: `${sortedItems.length} project${sortedItems.length === 1 ? '' : 's'}`,
       items: sortedItems,
-      minOrder,
     })
   }
 
-  sections.sort((a, b) => a.minOrder - b.minOrder || a.title.localeCompare(b.title))
-  return sections
+  return sortSectionsByProjectCategoryOrder(sections)
 }
 
 const FEATURED_HERO_LIMIT = 8

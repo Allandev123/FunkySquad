@@ -1,13 +1,18 @@
 /**
- * Seeds public.projects via the anon key. If you see "permission denied for table projects",
- * run the SQL in scripts/supabase-projects-dev-permissions.sql in the Supabase SQL Editor
- * (dev-only grants/RLS — replace with auth-based policies before production).
+ * Seeds public.projects via the anon key by default.
+ *
+ * If you applied scripts/supabase-projects-rls-auth.sql (public SELECT, admin-only writes),
+ * anon INSERT will fail — use the Supabase service_role key in a trusted environment only,
+ * or insert rows via the Dashboard SQL editor.
+ *
+ * For temporary wide-open access during local dev, see scripts/supabase-projects-dev-permissions.sql.
  */
 import dotenv from 'dotenv'
 import { createClient } from '@supabase/supabase-js'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { PROJECT_CATEGORY_ORDER } from './src/lib/projectCategoryOrder.js'
 import { projects as manualProjects } from './portfolio-data.js'
 
 dotenv.config()
@@ -78,8 +83,7 @@ function buildProjectsFromPublicImages() {
     }
   })
 
-  const categoryOrder = ['Knife Legends', 'Saiyan Rampage', 'Side Projects', 'Extra Work']
-  const byCategory = new Map(categoryOrder.map((c) => [c, []]))
+  const byCategory = new Map(PROJECT_CATEGORY_ORDER.map((c) => [c, []]))
   for (const row of rows) {
     const bucket = byCategory.get(row.normalizedCategory)
     if (bucket) bucket.push(row)
@@ -90,7 +94,7 @@ function buildProjectsFromPublicImages() {
   }
 
   const projects = []
-  for (const category of categoryOrder) {
+  for (const category of PROJECT_CATEGORY_ORDER) {
     const list = byCategory.get(category) ?? []
     list.forEach((item, index) => {
       projects.push({
