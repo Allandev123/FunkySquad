@@ -287,9 +287,11 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
           </>
         ) : null}
 
-        <div className="scroll-indicator-float absolute bottom-5 left-1/2 z-10 -translate-x-1/2 text-center text-[10px] uppercase tracking-[0.2em] text-zinc-500 sm:bottom-6 sm:text-xs">
-          <span>Scroll</span>
-          <div className="mx-auto mt-2 h-6 w-px bg-zinc-500/90" />
+        <div className="pointer-events-none absolute bottom-5 left-0 z-10 flex w-full justify-center sm:bottom-6">
+          <div className="scroll-indicator-float text-center text-[10px] uppercase tracking-[0.2em] text-zinc-400 sm:text-xs">
+            <span>Scroll</span>
+            <div className="mx-auto mt-2 h-6 w-px bg-zinc-500/90" />
+          </div>
         </div>
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-16 bg-gradient-to-b from-transparent to-black/40" />
       </div>
