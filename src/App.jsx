@@ -71,7 +71,7 @@ function SiteFooter() {
             <p className="navbar-font text-lg font-semibold tracking-wide text-white">FunkySquadHD</p>
             <p className="mt-2 text-sm font-medium text-zinc-400">Roblox Environment &amp; Game Developer</p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-zinc-500">
-              Worlds, maps, and gameplay spaces — built for clarity, mood, and performance.
+              I build worlds, maps, and gameplay spaces.
             </p>
           </div>
 
@@ -430,37 +430,51 @@ function PortfolioPage() {
               />
               <div className="max-w-4xl space-y-5 text-sm leading-relaxed text-zinc-300 sm:text-base">
                 <p className="text-base font-semibold text-zinc-100 sm:text-lg">
-                  I&apos;m Omar, also known as FunkySquadHD on Roblox.
-                </p>
-                <p>
-                  I focus on environment design, lighting, and optimization for Roblox experiences that feel clean,
-                  immersive, and gameplay-driven. My goal is to make every map look strong and play smoothly across
-                  devices.
-                </p>
-                <p>
-                  I&apos;ve worked on projects like <span className="font-medium text-zinc-100">Knife Legends</span>,
-                  where visual identity and gameplay flow have to work together. You can check it out here:{' '}
-                  <a
-                    href="https://www.roblox.com/games/114135183048839/KNIFE-LEGENDS"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
-                  >
-                    Knife Legends
-                  </a>
-                  .
-                </p>
-                <p>
-                  If you want to see more of my builds and progress, visit my{' '}
+                  Hi, I&apos;m Funky, also known as FunkySquadHD on{' '}
                   <a
                     href="https://www.youtube.com/channel/UCDYCph3O3BlykIi2uegyEnA"
                     target="_blank"
                     rel="noreferrer"
                     className="text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
                   >
-                    YouTube channel
+                    YouTube
                   </a>
-                  . I&apos;m always improving and pushing each project further.
+                  .
+                </p>
+                <p>
+                  I work on environment and map design. I&apos;ve worked on games like{' '}
+                  <a
+                    href="https://www.roblox.com/games/114135183048839/KNIFE-LEGENDS"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
+                  >
+                    Knife Legends
+                  </a>{' '}
+                  and <span className="font-medium text-zinc-100">Saiyan Rampage</span>, focusing on building maps.
+                </p>
+                <p>
+                  I&apos;ve also made side projects like Escape the Evil Reaper Obby, along with other smaller builds
+                  you can check out in my{' '}
+                  <a
+                    href="/#portfolio-sections"
+                    className="text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
+                  >
+                    portfolio
+                  </a>
+                  .
+                </p>
+                <p>
+                  I&apos;ve been creating content on{' '}
+                  <a
+                    href="https://www.youtube.com/channel/UCDYCph3O3BlykIi2uegyEnA"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
+                  >
+                    YouTube
+                  </a>{' '}
+                  since 2016, and I&apos;m constantly improving with every project.
                 </p>
               </div>
             </div>
@@ -673,10 +687,21 @@ function ContactPage() {
             <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
               Work With Me
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
-              I design immersive Roblox environments and gameplay-ready maps for teams that care about clarity, mood,
-              and ship quality — from Knife Legends–style experiences to new IPs that need a strong first impression.
-            </p>
+            <div className="mt-5 max-w-2xl space-y-4 text-base leading-relaxed text-zinc-400 sm:text-lg">
+              <p>I build Roblox maps and environments that look good and run smoothly.</p>
+              <p>
+                I&apos;ve worked on projects like{' '}
+                <a
+                  href="https://www.roblox.com/games/114135183048839/KNIFE-LEGENDS"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
+                >
+                  Knife Legends
+                </a>
+                , and I&apos;m open to new collaborations.
+              </p>
+            </div>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <button type="button" onClick={() => void copyDiscord()} className="work-btn inline-flex justify-center">
                 {copiedDiscord ? 'Copied — paste in Discord' : 'Message on Discord'}
@@ -693,7 +718,7 @@ function ContactPage() {
 
         <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14 lg:px-10 lg:py-16">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Reach out</p>
-          <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Pick what&apos;s fastest for you</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Pick what works best for you</h2>
           <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
             <div
               role="button"
@@ -712,7 +737,7 @@ function ContactPage() {
               <p className="mt-3 text-sm text-zinc-500">
                 {copiedDiscord
                   ? 'Copied. Open Discord and paste into Add Friend or a DM.'
-                  : 'Click this card to copy my username, then message me in the app.'}
+                  : 'Click to copy my username and message me on Discord. Fastest way to reach me.'}
               </p>
               <p className="mt-4 text-xs text-zinc-600">
                 <a
@@ -733,7 +758,7 @@ function ContactPage() {
             >
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Email</p>
               <p className="mt-4 break-all font-mono text-lg font-semibold text-[#ff8c00] sm:text-xl">{CONTACT_EMAIL}</p>
-              <p className="mt-3 text-sm text-zinc-500">Opens your mail app — best for briefs, links, and longer write-ups.</p>
+              <p className="mt-3 text-sm text-zinc-500">Best for longer messages or project details.</p>
             </a>
           </div>
         </section>
