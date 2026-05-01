@@ -141,7 +141,7 @@ function Navbar() {
       <nav className="navbar-font mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:py-6 lg:px-10">
         <Link to="/" className="group inline-flex items-center gap-2.5 no-underline">
           <img
-            src="/images/favicon_io/android-chrome-512x512.png"
+            src="/favicon.svg"
             alt="FunkySquadHD logo"
             className="h-7 w-7 rounded-md object-contain transition-opacity duration-200 group-hover:opacity-85"
           />
