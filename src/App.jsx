@@ -54,9 +54,6 @@ function ScrollTopButton() {
 const footerNavLinkClass =
   'text-sm text-zinc-400 transition-colors duration-200 hover:text-[#ff8c00] hover:underline hover:decoration-[#ff8c00]/50 hover:underline-offset-4'
 
-const footerMetaLinkClass =
-  'text-xs text-zinc-500 transition-colors duration-200 hover:text-[#ff8c00] hover:underline hover:decoration-[#ff8c00]/50 hover:underline-offset-4'
-
 function SiteFooter() {
   return (
     <footer className="relative border-t border-white/[0.06] bg-gradient-to-b from-[#0d0d0d] via-[#0a0a0a] to-[#050505]">
@@ -87,39 +84,27 @@ function SiteFooter() {
                 Assets
               </a>
               <Link to="/contact" className={footerNavLinkClass}>
-                Contact
+                Discord
               </Link>
             </nav>
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Get in Touch</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Discord</p>
             <p className="mt-4 max-w-[260px] text-sm leading-relaxed text-zinc-400">
-              Interested in working together?
+              Commissions and collaborations — reach me on Discord.
             </p>
-            <Link
-              to="/contact"
-              className="work-btn mt-5 inline-flex text-xs sm:text-sm"
-            >
-              Contact Me
+            <Link to="/contact" className={`${footerNavLinkClass} mt-5 inline-block font-medium text-[#ff8c00]`}>
+              @funkysquadhd →
             </Link>
           </div>
         </div>
 
         <div className="mt-10 flex flex-col gap-5 border-t border-white/[0.05] pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <p className="text-xs text-zinc-600">© 2026 FunkySquadHD</p>
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
-            <a href="mailto:rbx.funkybussiness@gmail.com" className={footerMetaLinkClass}>
-              Email
-            </a>
-            <span className="hidden text-zinc-700 sm:inline" aria-hidden>
-              ·
-            </span>
-            <span className="text-xs text-zinc-500">
-              Discord{' '}
-              <span className="text-zinc-400">@funkysquadhd</span>
-            </span>
-          </div>
+          <p className="text-xs text-zinc-500">
+            Discord <span className="font-medium text-zinc-400">@funkysquadhd</span>
+          </p>
         </div>
       </div>
     </footer>
@@ -508,119 +493,24 @@ function PortfolioPage() {
 }
 
 function ContactPage() {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    message: '',
-  })
-
-  const handleChange = (event) => {
-    const { name, value } = event.target
-    setFormData((previous) => ({ ...previous, [name]: value }))
-  }
-
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    console.log('Contact form submitted:', formData)
-  }
-
   return (
     <div className="min-h-screen bg-[#0f0f0f] text-zinc-200">
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-10 lg:py-20">
-        <section className="rounded-2xl border border-white/10 bg-[#151515] p-6 sm:p-10 lg:p-12">
-          <div className="grid grid-cols-1 gap-14 lg:grid-cols-2 lg:gap-16">
-            <div className="flex flex-col justify-center">
-              <h1 className="text-4xl font-bold leading-tight text-white sm:text-5xl">Work With Me</h1>
-              <p className="mt-5 max-w-md text-zinc-300">
-                Interested in working together? Feel free to reach out.
+        <section className="rounded-2xl border border-white/10 bg-[#151515] p-8 sm:p-12 lg:p-14">
+          <div className="mx-auto max-w-xl">
+            <h1 className="text-4xl font-bold leading-tight text-white sm:text-5xl">Discord</h1>
+            <p className="mt-4 text-zinc-400">
+              Commissions and collaborations — reach me here; it&apos;s the fastest way to get in touch.
+            </p>
+
+            <div className="mt-10 rounded-xl border border-white/[0.08] bg-zinc-950/40 px-6 py-8 sm:px-8">
+              <p className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Discord</p>
+              <p className="mt-4 font-mono text-2xl font-semibold tracking-tight text-[#ff8c00] sm:text-3xl">
+                @funkysquadhd
               </p>
-              <div className="mt-10 space-y-7 text-base sm:text-lg">
-                <div>
-                  <p className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Email</p>
-                  <a
-                    href="mailto:rbx.funkybussiness@gmail.com"
-                    className="mt-2 inline-block border-b border-white/30 pb-1 font-semibold text-zinc-100 transition hover:border-white hover:text-white"
-                  >
-                    rbx.funkybussiness@gmail.com
-                  </a>
-                </div>
-                <div>
-                  <p className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                    Discord
-                  </p>
-                  <p className="mt-2 font-semibold text-zinc-100">@funkysquadhd</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center">
-              <form className="w-full space-y-8" onSubmit={handleSubmit}>
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                      First Name
-                    </span>
-                    <input
-                      type="text"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleChange}
-                      className="mt-2 w-full border-0 border-b border-white/20 bg-transparent px-0 py-3 text-lg text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-white"
-                      placeholder="First Name"
-                      required
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                      Last Name
-                    </span>
-                    <input
-                      type="text"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleChange}
-                      className="mt-2 w-full border-0 border-b border-white/20 bg-transparent px-0 py-3 text-lg text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-white"
-                      placeholder="Last Name"
-                      required
-                    />
-                  </label>
-                </div>
-
-                <label className="block">
-                  <span className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                    Email
-                  </span>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="mt-2 w-full border-0 border-b border-white/20 bg-transparent px-0 py-3 text-lg text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-white"
-                    placeholder="you@example.com"
-                    required
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                    Message
-                  </span>
-                  <textarea
-                    name="message"
-                    value={formData.message}
-                    onChange={handleChange}
-                    rows={7}
-                    className="mt-2 w-full resize-y border-0 border-b border-white/20 bg-transparent px-0 py-3 text-lg text-zinc-100 outline-none placeholder:text-zinc-500 focus:border-white"
-                    placeholder="Tell me about your project..."
-                    required
-                  />
-                </label>
-
-                <button type="submit" className="work-btn inline-flex">
-                  SEND MESSAGE
-                </button>
-              </form>
+              <p className="mt-3 text-sm text-zinc-500">
+                Copy the handle and send a friend request or DM on Discord.
+              </p>
             </div>
           </div>
         </section>
