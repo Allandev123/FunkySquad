@@ -96,7 +96,7 @@ function SiteFooter() {
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Contact</p>
             <p className="mt-4 max-w-[260px] text-sm leading-relaxed text-zinc-400">
-              Discord or email — details on the contact page.
+              Reach out via Discord or email.
             </p>
             <Link to="/contact" className={`${footerNavLinkClass} mt-5 inline-block font-medium text-[#ff8c00]`}>
               Get in touch →
