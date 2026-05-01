@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   formatMbFraction,
@@ -12,6 +12,7 @@ import { fetchAdminProjectsResilient } from './lib/projectsFetch'
 import { supabase } from './supabaseClient'
 
 const PAGE_SIZE = 15
+const TOAST_TIMEOUT_MS = 3200
 
 const INITIAL_IMAGE_UPLOAD_STATE = {
   uploading: false,
@@ -28,6 +29,53 @@ const EMPTY_FORM = {
   category: '',
   order_index: 1,
   is_featured: false,
+}
+
+function formatBytes(bytes) {
+  const value = Number(bytes)
+  if (!Number.isFinite(value) || value <= 0) return '—'
+  if (value < 1024) return `${value} B`
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`
+  return `${(value / (1024 * 1024)).toFixed(2)} MB`
+}
+
+function buildStoragePublicUrl(bucket, path) {
+  const base = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/+$/, '')
+  if (!base || !bucket || !path) return ''
+  const safePath = path
+    .split('/')
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  return `${base}/storage/v1/object/public/${encodeURIComponent(bucket)}/${safePath}`
+}
+
+function extractStoragePathFromImageUrl(imageUrl, bucket) {
+  if (!imageUrl || !bucket) return null
+  const raw = String(imageUrl).trim()
+  if (!raw) return null
+
+  const bucketPrefix = `/storage/v1/object/public/${encodeURIComponent(bucket)}/`
+
+  try {
+    const url = new URL(raw)
+    const pathName = url.pathname || ''
+    const marker = pathName.indexOf(bucketPrefix)
+    if (marker !== -1) {
+      const encodedPath = pathName.slice(marker + bucketPrefix.length)
+      return decodeURIComponent(encodedPath)
+    }
+    return null
+  } catch {
+    const normalized = raw.replace(/^\/+/, '')
+    if (normalized.startsWith(`${bucket}/`)) {
+      return normalized.slice(bucket.length + 1)
+    }
+    if (!normalized.startsWith('http')) {
+      return normalized
+    }
+    return null
+  }
 }
 
 /** @typedef {'title' | 'category' | 'hero' | 'order'} AdminSortKey */
@@ -99,7 +147,7 @@ function SortableTh({ label, columnKey, activeKey, sortDir, onSort, align = 'lef
   )
 }
 
-function ThumbnailCell({ src, alt }) {
+function ThumbnailCell({ src, alt, onOpenPreview }) {
   const [broken, setBroken] = useState(false)
 
   if (!src || broken) {
@@ -111,12 +159,20 @@ function ThumbnailCell({ src, alt }) {
   }
 
   return (
-    <img
-      src={src}
-      alt={alt || ''}
-      onError={() => setBroken(true)}
-      className="h-[72px] w-[72px] shrink-0 rounded-md border border-white/[0.06] bg-zinc-900 object-cover"
-    />
+    <button
+      type="button"
+      onClick={onOpenPreview}
+      className="group relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#ff8c00]/45"
+      aria-label="Open image preview"
+    >
+      <img
+        src={src}
+        alt={alt || ''}
+        onError={() => setBroken(true)}
+        className="h-[72px] w-[72px] shrink-0 rounded-md border border-white/[0.06] bg-zinc-900 object-cover transition group-hover:brightness-110"
+      />
+      <span className="pointer-events-none absolute inset-0 rounded-md bg-black/0 transition group-hover:bg-black/15" />
+    </button>
   )
 }
 
@@ -139,12 +195,94 @@ export default function AdminPage() {
   const [deletingById, setDeletingById] = useState({})
   const [imageUpload, setImageUpload] = useState(INITIAL_IMAGE_UPLOAD_STATE)
   const imageFileInputRef = useRef(null)
+  const [toasts, setToasts] = useState([])
+
+  const [imageManagerLoading, setImageManagerLoading] = useState(true)
+  const [imageManagerQuery, setImageManagerQuery] = useState('')
+  const [imageManagerSort, setImageManagerSort] = useState('newest')
+  const [managedImages, setManagedImages] = useState([])
+  const [deletingImagePath, setDeletingImagePath] = useState(null)
+  const [previewModal, setPreviewModal] = useState({ open: false, src: '', title: '' })
+
+  const bucketName = getProjectImagesBucket()
+
+  const pushToast = useCallback((type, message) => {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`
+    setToasts((previous) => [...previous, { id, type, message }])
+    window.setTimeout(() => {
+      setToasts((previous) => previous.filter((toast) => toast.id !== id))
+    }, TOAST_TIMEOUT_MS)
+  }, [])
+
+  const requireAuthenticatedUser = useCallback(async () => {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+    if (error || !user) {
+      pushToast('error', 'Session expired. Please sign in again.')
+      navigate('/login', { replace: true })
+      return false
+    }
+    return true
+  }, [navigate, pushToast])
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data: { user } }) => {
       setSessionEmail(user?.email ?? null)
     })
   }, [])
+
+  const loadManagedImages = useCallback(async () => {
+    if (!(await requireAuthenticatedUser())) {
+      setImageManagerLoading(false)
+      return
+    }
+
+    setImageManagerLoading(true)
+    /** @type {string[]} */
+    const prefixes = ['']
+    /** @type {Array<{name: string, path: string, url: string, bytes: number, createdAt: string | null, updatedAt: string | null}>} */
+    const files = []
+
+    while (prefixes.length > 0) {
+      const prefix = prefixes.shift() ?? ''
+      const { data, error } = await supabase.storage.from(bucketName).list(prefix, { limit: 500, offset: 0 })
+
+      if (error) {
+        console.error('[admin] Failed to list storage images:', error)
+        pushToast('error', 'Could not load images from storage.')
+        setImageManagerLoading(false)
+        return
+      }
+
+      for (const item of data ?? []) {
+        if (!item?.name) continue
+        const path = prefix ? `${prefix}/${item.name}` : item.name
+        const isFolder = !item.metadata
+        if (isFolder) {
+          prefixes.push(path)
+          continue
+        }
+
+        files.push({
+          name: item.name,
+          path,
+          url: buildStoragePublicUrl(bucketName, path),
+          bytes: Number(item?.metadata?.size ?? 0),
+          createdAt: item.created_at ?? null,
+          updatedAt: item.updated_at ?? null,
+        })
+      }
+    }
+
+    setManagedImages(files)
+    setImageManagerLoading(false)
+  }, [bucketName, pushToast, requireAuthenticatedUser])
+
+  useEffect(() => {
+    void loadManagedImages()
+  }, [loadManagedImages])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -251,6 +389,15 @@ export default function AdminPage() {
     resetImageUploadUi()
   }
 
+  const openPreviewModal = (src, title) => {
+    if (!src) return
+    setPreviewModal({ open: true, src, title: title ?? '' })
+  }
+
+  const closePreviewModal = useCallback(() => {
+    setPreviewModal({ open: false, src: '', title: '' })
+  }, [])
+
   useEffect(() => {
     if (!modalOpen) return
     const onKey = (e) => {
@@ -259,6 +406,24 @@ export default function AdminPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [modalOpen])
+
+  useEffect(() => {
+    if (!previewModal.open) return
+    const onKey = (event) => {
+      if (event.key === 'Escape') closePreviewModal()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [closePreviewModal, previewModal.open])
+
+  useEffect(() => {
+    if (!previewModal.open) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [previewModal.open])
 
   useEffect(() => {
     if (!imageUpload.success) return
@@ -378,12 +543,25 @@ export default function AdminPage() {
     }
   }
 
-  const deleteProject = async (projectId) => {
+  const deleteProject = async (project) => {
+    const projectId = project?.id
+    if (!projectId) return
     if (!window.confirm('Delete this project? This cannot be undone.')) return
 
     setDeletingById((previous) => ({ ...previous, [projectId]: true }))
 
     try {
+      const filePath = extractStoragePathFromImageUrl(project.image_url, bucketName)
+      if (filePath) {
+        const { error: storageDeleteError } = await supabase.storage.from(bucketName).remove([filePath])
+        if (storageDeleteError) {
+          console.error(`[admin] Failed to delete image "${filePath}" for project ${projectId}:`, storageDeleteError)
+        } else {
+          setManagedImages((previous) => previous.filter((item) => item.path !== filePath))
+          console.log(`[admin] Deleted storage image "${filePath}" for project ${projectId}.`)
+        }
+      }
+
       const { error } = await supabase.from('projects').delete().eq('id', projectId)
       if (error) {
         console.error(`[admin] Failed to delete project ${projectId}:`, error)
@@ -409,6 +587,77 @@ export default function AdminPage() {
             ? Boolean(value)
             : value,
     }))
+  }
+
+  const filteredManagedImages = useMemo(() => {
+    const query = imageManagerQuery.trim().toLowerCase()
+    let rows = managedImages
+
+    if (query) {
+      rows = rows.filter((item) => item.name.toLowerCase().includes(query))
+    }
+
+    const byDateDesc = (a, b) => {
+      const ad = Date.parse(a.createdAt ?? a.updatedAt ?? '') || 0
+      const bd = Date.parse(b.createdAt ?? b.updatedAt ?? '') || 0
+      if (bd !== ad) return bd - ad
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    }
+    const byDateAsc = (a, b) => {
+      const ad = Date.parse(a.createdAt ?? a.updatedAt ?? '') || 0
+      const bd = Date.parse(b.createdAt ?? b.updatedAt ?? '') || 0
+      if (ad !== bd) return ad - bd
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    }
+
+    const copy = [...rows]
+    switch (imageManagerSort) {
+      case 'oldest':
+        return copy.sort(byDateAsc)
+      case 'name-asc':
+        return copy.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      case 'name-desc':
+        return copy.sort((a, b) => b.name.localeCompare(a.name, undefined, { sensitivity: 'base' }))
+      case 'newest':
+      default:
+        return copy.sort(byDateDesc)
+    }
+  }, [imageManagerQuery, imageManagerSort, managedImages])
+
+  const copyManagedImageUrl = async (url) => {
+    if (!(await requireAuthenticatedUser())) return
+
+    if (!url) {
+      pushToast('error', 'Could not build public URL for this image.')
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(url)
+      pushToast('success', 'Public URL copied.')
+    } catch (error) {
+      console.error('[admin] Failed to copy image URL:', error)
+      pushToast('error', 'Failed to copy URL.')
+    }
+  }
+
+  const deleteManagedImage = async (imagePath) => {
+    if (!(await requireAuthenticatedUser())) return
+    if (!imagePath) return
+    if (!window.confirm(`Delete "${imagePath}" from storage? This cannot be undone.`)) return
+
+    setDeletingImagePath(imagePath)
+    const { error } = await supabase.storage.from(bucketName).remove([imagePath])
+    if (error) {
+      console.error('[admin] Failed to delete storage image:', error)
+      pushToast('error', 'Delete failed.')
+      setDeletingImagePath(null)
+      return
+    }
+
+    setManagedImages((previous) => previous.filter((item) => item.path !== imagePath))
+    pushToast('success', 'Image deleted from storage.')
+    setDeletingImagePath(null)
   }
 
   return (
@@ -514,7 +763,11 @@ export default function AdminPage() {
                         className="border-b border-white/[0.04] transition-colors last:border-b-0 hover:bg-white/[0.03]"
                       >
                         <td className="py-2.5 pl-5">
-                          <ThumbnailCell src={project.image_url} alt={project.title} />
+                          <ThumbnailCell
+                            src={project.image_url}
+                            alt={project.title}
+                            onOpenPreview={() => openPreviewModal(project.image_url, project.title)}
+                          />
                         </td>
                         <td className="max-w-[220px] px-4 py-2.5">
                           <span className="line-clamp-2 font-medium text-zinc-100" title={project.title}>
@@ -544,7 +797,7 @@ export default function AdminPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => deleteProject(project.id)}
+                              onClick={() => deleteProject(project)}
                               disabled={isDeleting}
                               className="rounded-md border border-red-500/25 px-2.5 py-1 text-xs font-medium text-red-400/90 transition hover:bg-red-500/10 disabled:opacity-50"
                             >
@@ -591,9 +844,171 @@ export default function AdminPage() {
             </div>
           </footer>
         )}
+
+        <section className="mt-12">
+          <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500">Supabase Storage</p>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">Image Manager</h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                View, copy URLs, and delete files from <code className="rounded bg-zinc-900 px-1">{bucketName}</code>.
+              </p>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              <input
+                type="search"
+                value={imageManagerQuery}
+                onChange={(e) => setImageManagerQuery(e.target.value)}
+                placeholder="Search filename…"
+                className="w-full rounded-lg border border-white/[0.08] bg-zinc-900/40 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/40 sm:w-56"
+                aria-label="Search storage images"
+              />
+              <select
+                value={imageManagerSort}
+                onChange={(e) => setImageManagerSort(e.target.value)}
+                className="rounded-lg border border-white/[0.08] bg-zinc-900/40 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-orange-500/40"
+                aria-label="Sort storage images"
+              >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="name-asc">Name A-Z</option>
+                <option value="name-desc">Name Z-A</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => void loadManagedImages()}
+                className="rounded-lg border border-white/[0.1] px-3 py-2 text-sm text-zinc-300 transition hover:border-white/20 hover:bg-white/[0.05]"
+              >
+                Refresh
+              </button>
+            </div>
+          </header>
+
+          {imageManagerLoading ? (
+            <div className="rounded-lg border border-white/[0.06] bg-zinc-950/40 px-4 py-10 text-center text-sm text-zinc-500">
+              Loading images…
+            </div>
+          ) : filteredManagedImages.length === 0 ? (
+            <div className="rounded-lg border border-white/[0.06] bg-zinc-950/40 px-4 py-10 text-center text-sm text-zinc-500">
+              {managedImages.length === 0 ? 'No images in this bucket yet.' : 'No matches for your search.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredManagedImages.map((item) => {
+                const isDeleting = deletingImagePath === item.path
+                const uploadedAt = item.createdAt ?? item.updatedAt
+                return (
+                  <article
+                    key={item.path}
+                    className="group overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-950/55"
+                  >
+                    <div className="relative aspect-[4/3] bg-zinc-900">
+                      <img src={item.url} alt={item.name} className="h-full w-full object-cover" loading="lazy" />
+                      <div className="absolute inset-0 flex items-end gap-2 bg-black/50 p-3 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => void copyManagedImageUrl(item.url)}
+                          className="rounded-md border border-white/25 bg-black/35 px-3 py-1.5 text-xs font-medium text-zinc-100 transition hover:border-white/40"
+                        >
+                          Copy URL
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void deleteManagedImage(item.path)}
+                          disabled={isDeleting}
+                          className="rounded-md border border-red-400/40 bg-black/35 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:border-red-300/70 disabled:opacity-50"
+                        >
+                          {isDeleting ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 px-3 py-3">
+                      <p className="truncate text-sm font-medium text-zinc-100" title={item.name}>
+                        {item.name}
+                      </p>
+                      <div className="flex items-center justify-between gap-3 text-xs text-zinc-500">
+                        <span>{formatBytes(item.bytes)}</span>
+                        <span>{uploadedAt ? new Date(uploadedAt).toLocaleDateString() : 'Unknown date'}</span>
+                      </div>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
+        </section>
       </main>
 
+      <div className="pointer-events-none fixed right-4 top-4 z-[220] flex w-full max-w-xs flex-col gap-2">
+        {toasts.map((toast) => {
+          const isError = toast.type === 'error'
+          return (
+            <div
+              key={toast.id}
+              className={`rounded-lg border px-3 py-2 text-sm shadow-lg ${
+                isError
+                  ? 'border-red-400/50 bg-red-500/15 text-red-100'
+                  : 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100'
+              }`}
+            >
+              {toast.message}
+            </div>
+          )
+        })}
+      </div>
+
       <AnimatePresence>
+        {previewModal.open && (
+          <motion.div
+            className="fixed inset-0 z-[230] flex items-center justify-center bg-black/70 p-4 backdrop-blur-[4px]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={closePreviewModal}
+            role="presentation"
+          >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Project image preview"
+              onClick={(e) => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.97, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="relative flex max-h-[80vh] w-full max-w-[80vw] flex-col items-center gap-3 rounded-xl border border-white/[0.1] bg-[#111111]/95 p-4 shadow-[0_28px_90px_rgba(0,0,0,0.65)]"
+            >
+              <button
+                type="button"
+                onClick={closePreviewModal}
+                className="absolute right-2.5 top-2.5 rounded-md border border-white/[0.12] px-2 py-1 text-xs text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                aria-label="Close preview"
+              >
+                X
+              </button>
+              <img
+                src={previewModal.src}
+                alt={previewModal.title || 'Project image'}
+                className="max-h-[calc(80vh-7.5rem)] w-auto max-w-full object-contain"
+              />
+              <div className="flex w-full flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] pt-3">
+                <p className="truncate text-sm text-zinc-300" title={previewModal.title || ''}>
+                  {previewModal.title || 'Untitled project'}
+                </p>
+                <a
+                  href={previewModal.src}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-md border border-white/[0.12] px-2.5 py-1 text-xs text-zinc-300 transition hover:border-white/25 hover:bg-white/[0.05] hover:text-zinc-100"
+                >
+                  Open full image
+                </a>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {modalOpen && (
           <motion.div
             className="fixed inset-0 z-[200] flex items-center justify-center bg-black/65 p-4 backdrop-blur-[2px]"

@@ -131,7 +131,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
 
   return (
     <section
-      className="relative isolate min-h-[420px] overflow-hidden md:min-h-[72vh]"
+      className="group relative isolate min-h-[420px] overflow-hidden md:min-h-[72vh]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       aria-roledescription="carousel"
@@ -238,17 +238,31 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               type="button"
               aria-label="Previous slide"
               onClick={() => go(-1)}
-              className="absolute left-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:left-4 sm:p-2.5"
+              className="absolute left-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.15] bg-white/[0.08] text-white/80 opacity-60 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-[10px] transition-[opacity,background-color,border-color] duration-200 ease-in-out group-hover:opacity-100 hover:bg-white/[0.15] hover:border-white/[0.22]"
             >
-              <span className="block text-lg font-light leading-none sm:text-xl">‹</span>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M14.5 5.5 8 12l6.5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
             </button>
             <button
               type="button"
               aria-label="Next slide"
               onClick={() => go(1)}
-              className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full border border-white/15 bg-black/35 p-2 text-white backdrop-blur-md transition hover:border-[#ff8c00]/40 hover:bg-black/50 sm:right-4 sm:p-2.5"
+              className="absolute right-4 top-1/2 z-20 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/[0.15] bg-white/[0.08] text-white/80 opacity-60 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-[10px] transition-[opacity,background-color,border-color] duration-200 ease-in-out group-hover:opacity-100 hover:bg-white/[0.15] hover:border-white/[0.22]"
             >
-              <span className="block text-lg font-light leading-none sm:text-xl">›</span>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path d="M9.5 5.5 16 12l-6.5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
             </button>
 
             <div

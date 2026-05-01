@@ -54,6 +54,10 @@ function ScrollTopButton() {
 const footerNavLinkClass =
   'text-sm text-zinc-400 transition-colors duration-200 hover:text-[#ff8c00] hover:underline hover:decoration-[#ff8c00]/50 hover:underline-offset-4'
 
+const CONTACT_EMAIL = 'rbx.funkybussiness@gmail.com'
+const DISCORD_HANDLE = '@funkysquadhd'
+const PROFILE_IMAGE_SRC = '/images/FunkySquadYT.jpg'
+
 function SiteFooter() {
   return (
     <footer className="relative border-t border-white/[0.06] bg-gradient-to-b from-[#0d0d0d] via-[#0a0a0a] to-[#050505]">
@@ -84,27 +88,38 @@ function SiteFooter() {
                 Assets
               </a>
               <Link to="/contact" className={footerNavLinkClass}>
-                Discord
+                Contact
               </Link>
             </nav>
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Discord</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Contact</p>
             <p className="mt-4 max-w-[260px] text-sm leading-relaxed text-zinc-400">
-              Commissions and collaborations — reach me on Discord.
+              Discord or email — details on the contact page.
             </p>
             <Link to="/contact" className={`${footerNavLinkClass} mt-5 inline-block font-medium text-[#ff8c00]`}>
-              @funkysquadhd →
+              Get in touch →
             </Link>
           </div>
         </div>
 
         <div className="mt-10 flex flex-col gap-5 border-t border-white/[0.05] pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
           <p className="text-xs text-zinc-600">© 2026 FunkySquadHD</p>
-          <p className="text-xs text-zinc-500">
-            Discord <span className="font-medium text-zinc-400">@funkysquadhd</span>
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+            <span>
+              Discord <span className="font-medium text-zinc-400">{DISCORD_HANDLE}</span>
+            </span>
+            <span className="hidden text-zinc-700 sm:inline" aria-hidden>
+              ·
+            </span>
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="font-medium text-zinc-400 transition-colors hover:text-[#ff8c00]"
+            >
+              Email
+            </a>
+          </div>
         </div>
       </div>
     </footer>
@@ -112,13 +127,29 @@ function SiteFooter() {
 }
 
 function Navbar() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  const closeMobileMenu = () => setMobileMenuOpen(false)
+
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-lg">
-      <nav className="navbar-font mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-5 sm:px-6 md:py-6 lg:px-10">
-        <Link to="/" className="text-xl font-semibold tracking-wide text-white md:text-2xl">
-          FunkySquadHD
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl">
+      <nav className="navbar-font mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 md:py-6 lg:px-10">
+        <Link to="/" className="group inline-flex items-center gap-2.5 no-underline">
+          <img
+            src="/images/favicon_io/android-chrome-512x512.png"
+            alt="FunkySquadHD logo"
+            className="h-7 w-7 rounded-md object-contain transition-opacity duration-200 group-hover:opacity-85"
+          />
+          <span className="text-lg font-semibold tracking-wide text-white transition-colors duration-200 group-hover:text-[#ff8c00] md:text-2xl">
+            FunkySquadHD
+          </span>
         </Link>
-        <div className="flex items-center gap-8 text-base font-medium tracking-wide text-zinc-300">
+        <div className="hidden items-center gap-8 text-base font-medium tracking-wide text-zinc-300 md:flex">
           <a href="/#about" className="transition hover:text-white">
             About
           </a>
@@ -129,10 +160,75 @@ function Navbar() {
             Assets
           </a>
         </div>
-        <Link to="/contact" className="work-btn hidden text-sm sm:inline-flex">
+        <Link to="/contact" className="work-btn hidden text-sm md:inline-flex">
           WORK WITH ME
         </Link>
+
+        <button
+          type="button"
+          aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen((open) => !open)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/5 text-zinc-100 transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-300 md:hidden"
+        >
+          <span className="relative block h-4 w-5">
+            <span
+              className={`absolute left-0 top-0 h-[2px] w-5 bg-current transition-all duration-300 ${
+                mobileMenuOpen ? 'top-[7px] rotate-45' : ''
+              }`}
+            />
+            <span
+              className={`absolute left-0 top-[7px] h-[2px] w-5 bg-current transition-all duration-300 ${
+                mobileMenuOpen ? 'opacity-0' : 'opacity-100'
+              }`}
+            />
+            <span
+              className={`absolute left-0 top-[14px] h-[2px] w-5 bg-current transition-all duration-300 ${
+                mobileMenuOpen ? 'top-[7px] -rotate-45' : ''
+              }`}
+            />
+          </span>
+        </button>
       </nav>
+
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="border-t border-white/10 bg-[#0b0b0b]/95 backdrop-blur-xl md:hidden"
+          >
+            <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 sm:px-6">
+              <a
+                href="/#about"
+                onClick={closeMobileMenu}
+                className="rounded-xl px-3 py-3.5 text-base font-medium text-zinc-200 transition hover:bg-white/5 hover:text-white"
+              >
+                About
+              </a>
+              <a
+                href="/#projects-hub"
+                onClick={closeMobileMenu}
+                className="rounded-xl px-3 py-3.5 text-base font-medium text-zinc-200 transition hover:bg-white/5 hover:text-white"
+              >
+                Projects
+              </a>
+              <a
+                href="/#portfolio-sections"
+                onClick={closeMobileMenu}
+                className="rounded-xl px-3 py-3.5 text-base font-medium text-zinc-200 transition hover:bg-white/5 hover:text-white"
+              >
+                Assets
+              </a>
+              <Link to="/contact" onClick={closeMobileMenu} className="work-btn mt-2 inline-flex justify-center text-sm">
+                WORK WITH ME
+              </Link>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   )
 }
@@ -166,6 +262,7 @@ function PortfolioPage() {
 
   const [selectedIndex, setSelectedIndex] = useState(null)
   const [expandedSections, setExpandedSections] = useState({})
+  const [lightboxImageLoaded, setLightboxImageLoaded] = useState(false)
 
   useEffect(() => {
     void Promise.resolve().then(() => {
@@ -256,6 +353,10 @@ function PortfolioPage() {
     return () => window.removeEventListener('keydown', handleModalKeys)
   }, [selectedIndex, goToNextImage, goToPreviousImage])
 
+  useEffect(() => {
+    setLightboxImageLoaded(false)
+  }, [selectedItem?.image])
+
   const ProjectCard = ({ item, compact = false }) => (
     <motion.button
       type="button"
@@ -318,26 +419,50 @@ function PortfolioPage() {
         >
           <div className="rounded-2xl border border-white/10 bg-[#151515] p-6 sm:p-8 lg:p-10">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">About Me</p>
-            <div className="mt-6 max-w-4xl space-y-5 text-sm leading-relaxed text-zinc-300 sm:text-base">
-              <p>
-                I&apos;m an environment artist focused on Roblox — building worlds players actually want to spend time
-                in. My work sits at the intersection of layout, mood, and readability: maps that feel intentional,
-                spaces that support gameplay, and lighting that sells the scene without fighting it.
-              </p>
-              <p>
-                Most of my projects fall into full environment builds, gameplay-forward spaces, and polish passes on
-                maps and hubs — everything from blockout and set dressing to optimization passes so experiences stay
-                smooth on real hardware.
-              </p>
-              <p>
-                Knife Legends is one of the standout collaborations in my portfolio — a project where strong visual
-                identity and clear spatial design had to work together at scale. I care about systems too: sensible
-                workflows, assets that are easy to iterate on, and visuals that hold up when content changes.
-              </p>
-              <p>
-                If you&apos;re looking for someone who can think like both an artist and a builder — composition and
-                craft, but also performance and player flow — I&apos;d love to hear what you&apos;re shipping next.
-              </p>
+            <div className="mt-6 flex flex-col items-center gap-5 sm:items-start sm:gap-6 md:flex-row md:items-start">
+              <img
+                src={PROFILE_IMAGE_SRC}
+                alt="Omar / FunkySquadHD profile"
+                onError={(event) => {
+                  event.currentTarget.src = '/hero-fallback.svg'
+                }}
+                className="h-[88px] w-[88px] shrink-0 rounded-full border border-[#ff8c00]/45 object-cover shadow-[0_0_22px_rgba(255,140,0,0.2)] sm:h-24 sm:w-24"
+              />
+              <div className="max-w-4xl space-y-5 text-sm leading-relaxed text-zinc-300 sm:text-base">
+                <p className="text-base font-semibold text-zinc-100 sm:text-lg">
+                  I&apos;m Omar, also known as FunkySquadHD on Roblox.
+                </p>
+                <p>
+                  I focus on environment design, lighting, and optimization for Roblox experiences that feel clean,
+                  immersive, and gameplay-driven. My goal is to make every map look strong and play smoothly across
+                  devices.
+                </p>
+                <p>
+                  I&apos;ve worked on projects like <span className="font-medium text-zinc-100">Knife Legends</span>,
+                  where visual identity and gameplay flow have to work together. You can check it out here:{' '}
+                  <a
+                    href="https://www.roblox.com/games/114135183048839/KNIFE-LEGENDS"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
+                  >
+                    Knife Legends
+                  </a>
+                  .
+                </p>
+                <p>
+                  If you want to see more of my builds and progress, visit my{' '}
+                  <a
+                    href="https://www.youtube.com/channel/UCDYCph3O3BlykIi2uegyEnA"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[#ff8c00] transition-all duration-200 hover:brightness-110 hover:underline hover:decoration-[#ff8c00]/70 hover:underline-offset-4"
+                  >
+                    YouTube channel
+                  </a>
+                  . I&apos;m always improving and pushing each project further.
+                </p>
+              </div>
             </div>
           </div>
         </section>
@@ -456,29 +581,55 @@ function PortfolioPage() {
               onClick={(event) => event.stopPropagation()}
             >
               <div className="group relative">
-                <img src={selectedItem.image} alt={selectedItem.title} className="max-h-[70vh] w-full object-cover" />
+                <img
+                  src={selectedItem.image}
+                  alt={selectedItem.title}
+                  onLoad={() => setLightboxImageLoaded(true)}
+                  className="max-h-[70vh] w-full object-cover"
+                />
                 <div className="pointer-events-none absolute inset-y-0 left-0 w-14 bg-gradient-to-r from-black/40 to-transparent" />
                 <div className="pointer-events-none absolute inset-y-0 right-0 w-14 bg-gradient-to-l from-black/40 to-transparent" />
                 <button
                   type="button"
                   onClick={goToPreviousImage}
-                  className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-lg text-white/80 opacity-50 backdrop-blur-sm transition duration-200 group-hover:opacity-80 hover:scale-105 hover:opacity-100 sm:p-3"
+                  className={`absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/[0.15] bg-white/[0.08] text-white/80 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-[10px] transition-[opacity,background-color,border-color] duration-200 ease-in-out hover:bg-white/[0.15] hover:border-white/[0.22] ${
+                    lightboxImageLoaded
+                      ? 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
+                      : 'opacity-0 pointer-events-none'
+                  }`}
                   aria-label="Previous image"
                 >
-                  &#x2039;
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path d="M14.5 5.5 8 12l6.5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
                 </button>
                 <button
                   type="button"
                   onClick={goToNextImage}
-                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-black/40 p-2 text-lg text-white/80 opacity-50 backdrop-blur-sm transition duration-200 group-hover:opacity-80 hover:scale-105 hover:opacity-100 sm:p-3"
+                  className={`absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-white/[0.15] bg-white/[0.08] text-white/80 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-[10px] transition-[opacity,background-color,border-color] duration-200 ease-in-out hover:bg-white/[0.15] hover:border-white/[0.22] ${
+                    lightboxImageLoaded
+                      ? 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto'
+                      : 'opacity-0 pointer-events-none'
+                  }`}
                   aria-label="Next image"
                 >
-                  &#x203A;
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path d="M9.5 5.5 16 12l-6.5 6.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
                 </button>
               </div>
               <div className="space-y-2 p-5 sm:p-6">
                 <p className="text-2xl font-semibold text-white">{selectedItem.title}</p>
-                <p className="text-zinc-300">{selectedItem.subtitle}</p>
                 <p className="text-sm text-zinc-400">{selectedItem.description}</p>
                 <p className="pt-1 text-xs text-zinc-500">
                   {selectedIndex + 1} / {galleryItems.length}
@@ -493,25 +644,136 @@ function PortfolioPage() {
 }
 
 function ContactPage() {
-  return (
-    <div className="min-h-screen bg-[#0f0f0f] text-zinc-200">
-      <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-10 lg:py-20">
-        <section className="rounded-2xl border border-white/10 bg-[#151515] p-8 sm:p-12 lg:p-14">
-          <div className="mx-auto max-w-xl">
-            <h1 className="text-4xl font-bold leading-tight text-white sm:text-5xl">Discord</h1>
-            <p className="mt-4 text-zinc-400">
-              Commissions and collaborations — reach me here; it&apos;s the fastest way to get in touch.
-            </p>
+  const { loading, galleryItems } = usePortfolioProjects()
+  const [copiedDiscord, setCopiedDiscord] = useState(false)
 
-            <div className="mt-10 rounded-xl border border-white/[0.08] bg-zinc-950/40 px-6 py-8 sm:px-8">
-              <p className="navbar-font text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Discord</p>
-              <p className="mt-4 font-mono text-2xl font-semibold tracking-tight text-[#ff8c00] sm:text-3xl">
-                @funkysquadhd
-              </p>
+  const teaserProjects = useMemo(() => {
+    return [...galleryItems]
+      .filter((p) => p.image?.trim())
+      .sort((a, b) => a.order_index - b.order_index)
+      .slice(0, 3)
+  }, [galleryItems])
+
+  const copyDiscord = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(DISCORD_HANDLE)
+      setCopiedDiscord(true)
+      window.setTimeout(() => setCopiedDiscord(false), 2200)
+    } catch {
+      window.prompt('Copy my Discord username:', DISCORD_HANDLE)
+    }
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-[#0b0b0b] text-zinc-200">
+      <main>
+        <section className="border-b border-white/[0.06] bg-gradient-to-b from-[#121212] via-[#0f0f0f] to-[#0b0b0b]">
+          <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#ff8c00]">Hire / collaborate</p>
+            <h1 className="mt-3 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Work With Me
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-relaxed text-zinc-400 sm:text-lg">
+              I design immersive Roblox environments and gameplay-ready maps for teams that care about clarity, mood,
+              and ship quality — from Knife Legends–style experiences to new IPs that need a strong first impression.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+              <button type="button" onClick={() => void copyDiscord()} className="work-btn inline-flex justify-center">
+                {copiedDiscord ? 'Copied — paste in Discord' : 'Message on Discord'}
+              </button>
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="navbar-font inline-flex justify-center rounded-full border border-[#ff8c00]/45 bg-transparent px-6 py-3 text-sm font-semibold uppercase tracking-wide text-[#ff8c00] shadow-[0_0_20px_rgba(255,140,0,0.12)] transition hover:border-[#ff8c00]/70 hover:bg-[#ff8c00]/10"
+              >
+                Email Me
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14 lg:px-10 lg:py-16">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Reach out</p>
+          <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Pick what&apos;s fastest for you</h2>
+          <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => void copyDiscord()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  void copyDiscord()
+                }
+              }}
+              className="cursor-pointer rounded-2xl border border-[#ff8c00]/50 bg-gradient-to-br from-[#1b1208] to-[#171717] p-7 text-left shadow-[0_0_35px_rgba(255,140,0,0.12)] outline-none transition hover:border-[#ff8c00]/70 hover:shadow-[0_0_45px_rgba(255,140,0,0.16)] focus-visible:ring-2 focus-visible:ring-[#ff8c00]/50 sm:p-9"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#ff8c00]">Primary — Discord</p>
+              <p className="mt-4 font-mono text-2xl font-semibold text-white sm:text-3xl">{DISCORD_HANDLE}</p>
               <p className="mt-3 text-sm text-zinc-500">
-                Copy the handle and send a friend request or DM on Discord.
+                {copiedDiscord
+                  ? 'Copied. Open Discord and paste into Add Friend or a DM.'
+                  : 'Click this card to copy my username, then message me in the app.'}
+              </p>
+              <p className="mt-4 text-xs text-zinc-600">
+                <a
+                  href="https://discord.com/app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-zinc-500 underline-offset-2 transition hover:text-[#ff8c00] hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  Open Discord in browser →
+                </a>
               </p>
             </div>
+
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="block rounded-2xl border border-white/10 bg-[#151515] p-6 text-left transition hover:border-white/[0.16] hover:bg-[#181818] sm:p-8"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Email</p>
+              <p className="mt-4 break-all font-mono text-lg font-semibold text-[#ff8c00] sm:text-xl">{CONTACT_EMAIL}</p>
+              <p className="mt-3 text-sm text-zinc-500">Opens your mail app — best for briefs, links, and longer write-ups.</p>
+            </a>
+          </div>
+        </section>
+
+        <section className="border-y border-white/[0.05] bg-[#0e0e0e]/80">
+          <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14 lg:px-10 lg:py-16">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Recent Work</p>
+                <h2 className="mt-2 text-2xl font-semibold text-white sm:text-3xl">Featured snapshots</h2>
+              </div>
+              <a href="/#portfolio-sections" className="work-btn inline-flex shrink-0 self-start sm:self-auto">
+                View Projects
+              </a>
+            </div>
+            <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {loading
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <div key={`teaser-sk-${i}`} className="aspect-[16/10] animate-pulse rounded-xl bg-zinc-800/80" />
+                  ))
+                : teaserProjects.map((item) => (
+                    <a
+                      key={item.id}
+                      href="/#portfolio-sections"
+                      className="group relative aspect-[16/10] overflow-hidden rounded-xl border border-white/10 bg-zinc-900"
+                    >
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                      />
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-3">
+                        <p className="truncate text-sm font-medium text-white">{item.title}</p>
+                      </div>
+                    </a>
+                  ))}
+            </div>
+            {!loading && teaserProjects.length === 0 ? (
+              <p className="mt-6 text-sm text-zinc-500">Add projects in the portfolio to show previews here.</p>
+            ) : null}
           </div>
         </section>
       </main>
