@@ -81,7 +81,7 @@ function SiteFooter() {
               <a href="/#about" className={footerNavLinkClass}>
                 About
               </a>
-              <a href="/#projects-hub" className={footerNavLinkClass}>
+              <a href="/#projects" className={footerNavLinkClass}>
                 Projects
               </a>
               <a href="/#portfolio-sections" className={footerNavLinkClass}>
@@ -153,7 +153,7 @@ function Navbar() {
           <a href="/#about" className="transition hover:text-white">
             About
           </a>
-          <a href="/#projects-hub" className="transition duration-300 hover:text-white">
+          <a href="/#projects" className="transition duration-300 hover:text-white">
             Projects
           </a>
           <a href="/#portfolio-sections" className="transition duration-300 hover:text-white">
@@ -209,7 +209,7 @@ function Navbar() {
                 About
               </a>
               <a
-                href="/#projects-hub"
+                href="/#projects"
                 onClick={closeMobileMenu}
                 className="rounded-xl px-3 py-3.5 text-base font-medium text-zinc-200 transition hover:bg-white/5 hover:text-white"
               >
@@ -242,12 +242,14 @@ function Layout() {
       <ScrollToTop />
       <Navbar />
       {isAdminRoute ? (
-        <div className="bg-[#0b0b0b] pt-6 pb-12 sm:pt-8">
+        <main className="bg-[#0b0b0b] pt-6 pb-12 sm:pt-8">
           <Outlet />
-        </div>
+        </main>
       ) : (
         <>
-          <Outlet />
+          <main>
+            <Outlet />
+          </main>
           <SiteFooter />
         </>
       )}
@@ -369,7 +371,7 @@ function PortfolioPage() {
     >
       <motion.img
         src={item.image}
-        alt={item.title}
+        alt={`${item.title} — Roblox map environment thumbnail`}
         className="h-full w-full object-cover"
         whileHover={{ scale: 1.06 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
@@ -384,7 +386,7 @@ function PortfolioPage() {
 
   return (
     <div className="min-h-screen bg-[#0b0b0b] text-zinc-200">
-      <main>
+      <>
         {error && (
           <div className="border-b border-red-500/25 bg-red-950/40 px-4 py-2 text-center text-sm text-red-200">
             Could not load portfolio: {error}
@@ -399,7 +401,7 @@ function PortfolioPage() {
         <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-10 lg:py-20">
           <div className="mb-16">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Featured Work</p>
-            <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Selected Highlights</h2>
+            <h3 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Selected Highlights</h3>
             <div className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               {loading
                 ? Array.from({ length: 6 }).map((_, index) => (
@@ -419,10 +421,11 @@ function PortfolioPage() {
         >
           <div className="rounded-2xl border border-white/10 bg-[#151515] p-6 sm:p-8 lg:p-10">
             <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">About Me</p>
+            <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">About</h2>
             <div className="mt-6 flex flex-col items-center gap-5 sm:items-start sm:gap-6 md:flex-row md:items-start">
               <img
                 src={PROFILE_IMAGE_SRC}
-                alt="Omar / FunkySquadHD profile"
+                alt="FunkySquadHD — Roblox environment and map designer portrait"
                 onError={(event) => {
                   event.currentTarget.src = '/hero-fallback.svg'
                 }}
@@ -482,11 +485,14 @@ function PortfolioPage() {
         </section>
 
         <section
-          id="projects-hub"
+          id="projects"
           className="scroll-mt-[100px] mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-10"
         >
           <p className="text-xs uppercase tracking-[0.18em] text-zinc-400">Project Categories</p>
-          <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">Explore By Project</h2>
+          <h2 className="mt-2 text-3xl font-semibold text-white sm:text-4xl">
+            Projects
+            <span className="sr-only"> — explore by project</span>
+          </h2>
           <div className="mt-7 grid grid-cols-1 gap-5 md:grid-cols-2">
             {loading
               ? Array.from({ length: 4 }).map((_, index) => (
@@ -500,7 +506,7 @@ function PortfolioPage() {
                     {section.items[0]?.image ? (
                       <img
                         src={section.items[0].image}
-                        alt={section.title}
+                        alt={`${section.title} — Roblox portfolio category preview`}
                         className="h-56 w-full object-cover transition duration-300 group-hover:scale-[1.04]"
                       />
                     ) : (
@@ -539,7 +545,7 @@ function PortfolioPage() {
                 className="scroll-mt-[100px] border-t border-white/10 pt-10"
               >
                 <div className="mb-5 flex items-center justify-between gap-4">
-                  <h2 className="text-2xl font-semibold text-white sm:text-3xl">{section.title}</h2>
+                  <h3 className="text-2xl font-semibold text-white sm:text-3xl">{section.title}</h3>
                   {section.items.length > 4 && (
                     <button
                       type="button"
@@ -564,9 +570,12 @@ function PortfolioPage() {
           })}
         </section>
 
-        <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-10">
+        <section
+          id="contact"
+          className="scroll-mt-[100px] mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-10"
+        >
           <div className="rounded-2xl border border-orange-500/30 bg-[#121212] p-8 shadow-[0_0_30px_rgba(255,122,0,0.08)] sm:p-12">
-            <h2 className="text-3xl font-semibold text-white sm:text-4xl">Work With Me</h2>
+            <h2 className="text-3xl font-semibold text-white sm:text-4xl">Contact</h2>
             <p className="mt-3 max-w-xl text-zinc-300">
               Interested in working together? Let&apos;s build something great.
             </p>
@@ -575,7 +584,7 @@ function PortfolioPage() {
             </Link>
           </div>
         </section>
-      </main>
+      </>
 
       <AnimatePresence>
         {selectedItem && (
@@ -597,7 +606,7 @@ function PortfolioPage() {
               <div className="group relative">
                 <img
                   src={selectedItem.image}
-                  alt={selectedItem.title}
+                  alt={`${selectedItem.title} — full Roblox map environment preview`}
                   onLoad={() => setLightboxImageLoaded(true)}
                   className="max-h-[70vh] w-full object-cover"
                 />
@@ -680,7 +689,7 @@ function ContactPage() {
 
   return (
     <div className="min-h-screen bg-[#0b0b0b] text-zinc-200">
-      <main>
+      <>
         <section className="border-b border-white/[0.06] bg-gradient-to-b from-[#121212] via-[#0f0f0f] to-[#0b0b0b]">
           <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-10 lg:py-24">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#ff8c00]">Hire / collaborate</p>
@@ -787,7 +796,7 @@ function ContactPage() {
                     >
                       <img
                         src={item.image}
-                        alt=""
+                        alt={`${item.title} — recent Roblox map environment`}
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       />
                       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-3">
@@ -801,7 +810,7 @@ function ContactPage() {
             ) : null}
           </div>
         </section>
-      </main>
+      </>
     </div>
   )
 }

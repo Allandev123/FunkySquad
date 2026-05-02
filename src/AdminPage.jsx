@@ -1131,7 +1131,7 @@ export default function AdminPage() {
                     <div className="mt-3 flex items-start gap-3">
                       <img
                         src={form.image_url}
-                        alt=""
+                        alt={`Uploaded image preview for ${form.title.trim() || 'project'}`}
                         className="h-20 w-20 shrink-0 rounded-md border border-white/[0.08] bg-zinc-900 object-cover"
                       />
                       <span className="text-[11px] leading-snug text-zinc-500">Preview uses the path above.</span>

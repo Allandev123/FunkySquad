@@ -21,6 +21,13 @@ function truncateText(text, max = 200) {
   return `${t.slice(0, max).trim()}…`
 }
 
+function preloadImageUrl(url) {
+  if (!url?.trim()) return
+  const img = new Image()
+  img.decoding = 'async'
+  img.src = url
+}
+
 export function HeroSlider({ slides = [], loading = false, onViewProject }) {
   const [index, setIndex] = useState(0)
   const [paused, setPaused] = useState(false)
@@ -79,25 +86,19 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
     void Promise.resolve().then(() => setHeroReady(true))
   }, [displaySlides.length, current?.image_url])
 
+  /** Preload slides at array index 1 and 2 (after first visible hero). */
   useEffect(() => {
     if (!displaySlides.length) return
-    for (const slide of displaySlides) {
-      const url = slide.image_url
-      if (!url) continue
-      const img = new Image()
-      img.decoding = 'async'
-      img.src = url
+    for (const idx of [1, 2]) {
+      preloadImageUrl(displaySlides[idx]?.image_url)
     }
   }, [displaySlides])
 
+  /** After navigation / autoplay: preload the following slide for instant transition. */
   useEffect(() => {
     if (!len) return
     const nextIdx = (safeIndex + 1) % len
-    const nextUrl = displaySlides[nextIdx]?.image_url
-    if (!nextUrl) return
-    const img = new Image()
-    img.decoding = 'async'
-    img.src = nextUrl
+    preloadImageUrl(displaySlides[nextIdx]?.image_url)
   }, [displaySlides, len, safeIndex])
 
   useEffect(() => {
@@ -113,7 +114,7 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
     setIndex((i) => (i + delta + len) % len)
   }
 
-  const categoryHref = current ? `#${categorySectionId(current.category)}` : '#projects-hub'
+  const categoryHref = current ? `#${categorySectionId(current.category)}` : '#projects'
 
   const allowSlideCrossfade = heroReady && crossfadeEnabled
 
@@ -128,6 +129,8 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
   }
 
   const enableKenBurns = Boolean(current && !isPromoSlide)
+
+  const heroImgLoading = safeIndex === 0 ? 'eager' : safeIndex <= 2 ? 'eager' : 'lazy'
 
   return (
     <section
@@ -159,10 +162,14 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
               >
                 <img
                   src={current.image_url}
-                  alt={current.title ? `${current.title} hero` : 'Featured project'}
+                  alt={
+                    current.title
+                      ? `${current.title} — Roblox map environment hero preview`
+                      : 'Featured Roblox map environment preview'
+                  }
                   decoding="async"
-                  loading="eager"
-                  fetchPriority="high"
+                  loading={heroImgLoading}
+                  fetchPriority={safeIndex === 0 ? 'high' : undefined}
                   className="h-full min-h-full w-full min-w-full object-cover object-center"
                   draggable={false}
                 />
@@ -202,15 +209,31 @@ export function HeroSlider({ slides = [], loading = false, onViewProject }) {
                       {current.id === LOADING_SLIDE_ID ? 'Loading' : 'Portfolio'}
                     </p>
                   )}
-                  <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
-                    {current.title}
-                  </h1>
-                  <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-zinc-200 sm:text-base lg:text-lg">
-                    {truncateText(current.description, 280)}
-                  </p>
+                  {!isPromoSlide ? (
+                    <>
+                      <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+                        {current.title}
+                      </h1>
+                      <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-zinc-200 sm:text-base lg:text-lg">
+                        {truncateText(current.description, 280)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h1 className="mt-2 text-3xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl">
+                        FunkySquadHD
+                      </h1>
+                      <h2 className="mt-2 text-xl font-semibold leading-snug text-zinc-100 sm:text-2xl lg:text-3xl">
+                        Roblox Environment &amp; Map Designer
+                      </h2>
+                      <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-zinc-200 sm:text-base lg:text-lg">
+                        {truncateText(current.description, 280)}
+                      </p>
+                    </>
+                  )}
                   <div className="mt-6 flex flex-wrap items-center gap-3">
                     <a
-                      href={isPromoSlide ? '#projects-hub' : categoryHref}
+                      href={isPromoSlide ? '#projects' : categoryHref}
                       className="inline-flex rounded-full border border-white/25 bg-black/35 px-5 py-2.5 text-xs font-semibold text-white backdrop-blur-sm transition hover:border-[#ff8c00]/60 hover:bg-black/45 sm:px-6 sm:py-3 sm:text-sm"
                       onClick={(e) => {
                         if (isPromoSlide) return
